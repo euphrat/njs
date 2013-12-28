@@ -1,0 +1,24 @@
+#!/bin/bash
+
+if [ $1 == "-exe" ]
+then
+	java -cp "$NJS_HOME/bin/:$NJS_HOME/lib/antlr.jar" NotJustStacks $1 $2
+else
+	java -cp "$NJS_HOME/bin/:$NJS_HOME/lib/antlr.jar" NotJustStacks $1 $2 $3
+fi
+
+if [ -f njstemp.cpp ]
+then
+	if [ $1 == "-exe" ]
+	then 
+			g++  -I$NJS_HOME/include -fpermissive -w -o $3 njstemp.cpp `cat njslink.txt`
+	else
+			if [ $1 == "-lib" ]
+			then
+				g++ -shared -fPIC -I$NJS_HOME/include -fpermissive -w -o lib$3.so njstemp.cpp `cat njslink.txt`
+			fi
+	fi
+	rm -f njstemp.cpp njstemp.h njslink.txt
+else
+	echo "Compilation errors!"
+fi
