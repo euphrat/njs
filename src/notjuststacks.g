@@ -406,7 +406,7 @@ program:
 {
 	if(isExe)
 	{
-		code.println("int main(int argc, char* argv[]){stack<Data> mainStack; for(int i = 1; i < argc; i++) {Data d(new string(argv[i]), TEXT); mainStack.push(d);} njs_func_main(mainStack);");	
+		code.println("int main(int argc, char* argv[]){stack<Data> mainStack; for(int i = 1; i < argc; i++) {Data d(new string(argv[i]), TEXT); mainStack.push(d);} njs_sp_main(mainStack);");	
 		code.println("#ifdef _WIN32");
 		code.println("cout << \"Press enter to continue...\" << endl; getchar();");
 		code.println("#endif _WIN32");
@@ -419,7 +419,7 @@ program:
 	{
 		if(symbols[i].substring(0,1).equals("@"))
 		{
-			headerCode.println(libname + "_NJS_API void njs_func_"+ symbols[i].substring(1) + "(stack<Data>&);");	
+			headerCode.println(libname + "_NJS_API void njs_sp_"+ symbols[i].substring(1) + "(stack<Data>&);");	
 		}	
 	}
 	
@@ -474,7 +474,7 @@ funcdef:
 
 func:
 #(IDENTIFIER {
-	code.println("void njs_func_" + #IDENTIFIER + "(stack<Data>& this_){");	
+	code.println("void njs_sp_" + #IDENTIFIER + "(stack<Data>& this_){");	
 	scope = #IDENTIFIER.getText();	
 } ((eval | pop | push | pop | newstack | assign)* | cppcode))
 {
@@ -688,7 +688,7 @@ push:
 			}
 			else if(symbolTable.contains("@"+x3)) //FUNCTION
 			{
-				code.println("\t{Data njs_temp_data(&njs_func_"+ x3 + ",FUNCTION); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
+				code.println("\t{Data njs_temp_data(&njs_sp_"+ x3 + ",FUNCTION); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 			}
 			else
 			{
@@ -770,7 +770,7 @@ push:
 			}
 			else if(symbolTable.contains("@"+x3)) //FUNCTION
 			{
-				code.println("\t{Data njs_temp_data(&njs_func_"+ x3 + ",FUNCTION); this_.push(njs_temp_data);}");
+				code.println("\t{Data njs_temp_data(&njs_sp_"+ x3 + ",FUNCTION); this_.push(njs_temp_data);}");
 			}
 			else
 			{
