@@ -100,10 +100,12 @@ program: (inc:include_list)(funcs:function_list)
 	#program = #([PROGRAM,"PROGRAM"],#program);
 };
 
-include_list: (INCLUDE! TEXT AT! TEXT)*
+include_list: (include_item)*
 {
 	#include_list = #([INCLUDE_LIST,"INCLUDE_LIST"],#include_list);
 };
+
+include_item: (INCLUDE^ TEXT (AT! TEXT)?);
 
 function_list: (funcdef: function_definition)+
 {
@@ -430,42 +432,35 @@ program:
 
 
 include_list:
-#(INCLUDE_LIST (TEXT)*)
+#(INCLUDE_LIST (x:INCLUDE
 {	
-	int n = #INCLUDE_LIST.getNumberOfChildren();
-	if(n > 0)
+	int numTexts = x.getNumberOfChildren();
+	String libraryName = x.getFirstChild().getText();
+	libraryName = libraryName.substring(1, libraryName.length()-1);
+	String headerFileName = libraryName + ".h";
+	String libraryDir = null;		
+	if(numTexts == 1) // just header file
 	{
-		AST libname2include = #INCLUDE_LIST.getFirstChild();
-		AST libnamePath = libname2include.getNextSibling();
-		String libHeaderName = libnamePath.getText().substring(1, libnamePath.getText().length()-1) + "/"+ libname2include.getText().substring(1, libname2include.getText().length()-1) +".h";
-		if(new File(libHeaderName).exists())
-		{
-			code.println("#include \""+ libHeaderName+ "\"");
-			linkInfo.print(" -L"+libnamePath.getText().substring(1, libnamePath.getText().length()-1) +" -l" + libname2include.getText().substring(1, libname2include.getText().length()-1));
-			updateSymbolTable(libHeaderName);
-		}
-		else
-		{
-			System.err.println("ERROR: Library "+ libname2include + " cannot be found.");	
-		}
-		for(int i = 1; i < n/2; i++)
-		{
-			libname2include = libnamePath.getNextSibling();	
-			libnamePath = libname2include.getNextSibling();
-			libHeaderName = libnamePath.getText().substring(1, libnamePath.getText().length()-1) + "/"+ libname2include.getText().substring(1, libname2include.getText().length()-1) +".h";
-			if(new File(libHeaderName).exists())
-			{
-				code.println("#include \""+ libHeaderName+ "\"");
-				linkInfo.print(" -L"+libnamePath.getText().substring(1, libnamePath.getText().length()-1) +" -l" + libname2include.getText().substring(1, libname2include.getText().length()-1));
-				updateSymbolTable(libHeaderName);
-			}
-			else
-			{
-				System.err.println("ERROR: Library "+ libname2include + " cannot be found.");	
-			}
-		}		
+		libraryDir = System.getenv("NJS_HOME") + "/njslib/";			
 	}
-};
+	else
+	{
+		String temp = x.getFirstChild().getNextSibling().getText();
+		libraryDir = temp.substring(1, temp.length()-1);
+	}
+	String headerFullPath = libraryDir + "/" + headerFileName;		
+	if(new File(headerFullPath).exists())
+	{
+		code.println("#include \""+ headerFileName + "\"");
+		linkInfo.print(" -L" + libraryDir +" -l" + libraryName + " -I" + libraryDir);
+		updateSymbolTable(headerFullPath);
+	}
+	else
+	{
+		System.err.println("ERROR: Library "+ libraryName + " cannot be found.");
+	}	
+}
+)*);
 
 function_list:
 #(FUNCTION_LIST (funcdef)*);

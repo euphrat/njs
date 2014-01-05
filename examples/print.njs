@@ -1,5 +1,5 @@
-include "njsio"@"/home/firat/git/njs/njslib/"
-include "njsmath"@"/home/firat/git/njs/njslib/"
+include "njsmath" 
+include "njsio"
 
 sp main
 	this << println_text;

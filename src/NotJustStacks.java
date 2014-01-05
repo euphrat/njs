@@ -7,7 +7,7 @@ import java.io.PrintWriter;
 import antlr.RecognitionException;
 import antlr.TokenStreamException;
 import antlr.collections.AST;
-import antlr.debug.misc.ASTFrame;
+//import antlr.debug.misc.ASTFrame;
 
 
 public class NotJustStacks {
