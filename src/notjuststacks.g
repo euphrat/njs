@@ -55,13 +55,14 @@ CPP: "??";
 LPAR: "(";
 RPAR: ")";
 AT: "@";
+COMMA: ",";
 
 
 TEXT:
   QUOTE (options {greedy=false;}:.)* QUOTE {};
   
 CPPINCLUDE:
-  LPAR! TEXT RPAR!;
+  LPAR! TEXT (COMMA! TEXT)? RPAR!;
   
 CPPCODE:
   CPP! (options {greedy=false;}:.)* CPP! {};
@@ -178,6 +179,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.BufferedReader;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.StringTokenizer;
 }
 
 class NotJustStacksWalker extends TreeParser;
@@ -449,12 +451,12 @@ include_list:
 		for(int i = 1; i < n/2; i++)
 		{
 			libname2include = libnamePath.getNextSibling();	
-			libnamePath = libname2include.getFirstChild();
+			libnamePath = libname2include.getNextSibling();
 			libHeaderName = libnamePath.getText().substring(1, libnamePath.getText().length()-1) + "/"+ libname2include.getText().substring(1, libname2include.getText().length()-1) +".h";
 			if(new File(libHeaderName).exists())
 			{
 				code.println("#include \""+ libHeaderName+ "\"");
-				linkInfo.println(libnamePath.getText().substring(1, libnamePath.getText().length()-1) +" ||| " + libname2include.getText().substring(1, libname2include.getText().length()-1));
+				linkInfo.print(" -L"+libnamePath.getText().substring(1, libnamePath.getText().length()-1) +" -l" + libname2include.getText().substring(1, libname2include.getText().length()-1));
 				updateSymbolTable(libHeaderName);
 			}
 			else
@@ -498,7 +500,18 @@ x:IDENTIFIER
 };
 
 cppcode:
-((y:CPPINCLUDE {headerCode.println("#include<"+y.getText().substring(1, y.getText().length()-1)+">");})* x:CPPCODE)
+((y:CPPINCLUDE {
+			StringTokenizer tokenizer = new StringTokenizer(y.getText(), "\"\"");
+			String includeFile = (String)tokenizer.nextElement();
+			headerCode.println("#include\""+includeFile+"\"");			
+			if(tokenizer.hasMoreElements())
+			{
+				String libraryName = (String)tokenizer.nextElement();
+				linkInfo.print(" -l"+libraryName);
+			}		
+			
+	       })* 
+x:CPPCODE)
 {
 	code.println(x);
 };

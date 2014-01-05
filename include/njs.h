@@ -4,6 +4,9 @@
 #include<string>
 #include<iostream>
 #define _STACK(S) ((stack<Data>*)((S).data))
+#define _INT(S) (*(int*)((S).data))
+#define _DOUBLE(S) (*(double*)((S).data))
+#define _TEXT(S) (*(string*)((S).data))
 using namespace std;
 enum DataType { STACK, INTEGER, DOUBLE, TEXT, SP, IF, THEN, ELSE };
 class Data{

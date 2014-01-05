@@ -182,7 +182,7 @@ sp println_pop
 				cout << "THEN" << endl; break;
 			case ELSE:
 				cout << "ELSE" << endl; break;
-			case FUNCTION:
+			case SP:
 				cout << "STACK_PROCESSOR [name]" << endl; break;
 			case STACK:
 				stack<Data> temp = *(stack<Data>*)A.data;
@@ -192,4 +192,11 @@ sp println_pop
 		this_.pop();
 	}
 ??
+end
+
+sp println
+	copy = &this;
+	this << println_pop;
+	*this;
+	this = &copy;
 end
