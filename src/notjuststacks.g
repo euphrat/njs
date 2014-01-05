@@ -528,7 +528,7 @@ assign:
 			}			
 			else
 			{
-				System.err.println("ERROR: Stack \""+ x3 + "\" does not exist in function \"" + scope + "\"");
+				System.err.println("ERROR: Stack \""+ x3 + "\" does not exist in stack processor \"" + scope + "\"");
 			}	
 		}
 		else if(x4 != null)
@@ -559,7 +559,7 @@ assign:
 			}			
 			else
 			{
-				System.err.println("ERROR: Stack \""+ x3 + "\" does not exist in function \"" + scope + "\"");
+				System.err.println("ERROR: Stack \""+ x3 + "\" does not exist in stack processor \"" + scope + "\"");
 			}	
 		}
 		else if(x5 != null)		
@@ -583,7 +583,7 @@ eval:
 		}
 		else
 		{
-			System.err.println("ERROR: Stack \""+ x1 + "\" does not exist in function \"" + scope + "\"");
+			System.err.println("ERROR: Stack \""+ x1 + "\" does not exist in stack processor \"" + scope + "\"");
 		}
 	}		
 	else
@@ -631,7 +631,7 @@ pop:
 		}
 		else
 		{
-			System.err.println("ERROR: Stack \""+ x1 + "\" does not exist in function \"" + scope + "\"");
+			System.err.println("ERROR: Stack \""+ x1 + "\" does not exist in stack processor \"" + scope + "\"");
 		}	
 	}
 	else //THIS
@@ -688,11 +688,11 @@ push:
 			}
 			else if(symbolTable.contains("@"+x3)) //FUNCTION
 			{
-				code.println("\t{Data njs_temp_data(&njs_sp_"+ x3 + ",FUNCTION); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
+				code.println("\t{Data njs_temp_data(&njs_sp_"+ x3 + ",SP); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 			}
 			else
 			{
-				System.err.println("ERROR: Stack \""+ x3 + "\" does not exist in function \"" + scope + "\"");
+				System.err.println("ERROR: Stack \""+ x3 + "\" does not exist in stack processor \"" + scope + "\"");
 			}
 		}
 		else if(x4 != null) //THIS
@@ -709,7 +709,7 @@ push:
 				}
 				else
 				{
-					System.err.println("ERROR: Stack \""+ x50 + "\" does not exist in function \"" + scope + "\"");
+					System.err.println("ERROR: Stack \""+ x50 + "\" does not exist in stack processor \"" + scope + "\"");
 				}
 			}
 			else
@@ -727,7 +727,7 @@ push:
 				}
 				else
 				{
-					System.err.println("ERROR: Stack \""+ x60 + "\" does not exist in function \"" + scope + "\"");
+					System.err.println("ERROR: Stack \""+ x60 + "\" does not exist in stack processor \"" + scope + "\"");
 				}
 			}
 			else
@@ -770,11 +770,11 @@ push:
 			}
 			else if(symbolTable.contains("@"+x3)) //FUNCTION
 			{
-				code.println("\t{Data njs_temp_data(&njs_sp_"+ x3 + ",FUNCTION); this_.push(njs_temp_data);}");
+				code.println("\t{Data njs_temp_data(&njs_sp_"+ x3 + ",SP); this_.push(njs_temp_data);}");
 			}
 			else
 			{
-				System.err.println("ERROR: Stack \""+ x3 + "\" does not exist in function \"" + scope + "\"");
+				System.err.println("ERROR: Stack \""+ x3 + "\" does not exist in stack processor \"" + scope + "\"");
 			}
 		}
 		else if(x4 != null) //THIS
@@ -791,7 +791,7 @@ push:
 				}
 				else
 				{
-					System.err.println("ERROR: Stack \""+ x50 + "\" does not exist in function \"" + scope + "\"");
+					System.err.println("ERROR: Stack \""+ x50 + "\" does not exist in stack processor \"" + scope + "\"");
 				}
 			}
 			else
@@ -810,7 +810,7 @@ push:
 				}
 				else
 				{
-					System.err.println("ERROR: Stack \""+ x60 + "\" does not exist in function \"" + scope + "\"");
+					System.err.println("ERROR: Stack \""+ x60 + "\" does not exist in stack processor \"" + scope + "\"");
 				}
 			}
 			else

@@ -5,7 +5,7 @@
 #include<iostream>
 #define _STACK(S) ((stack<Data>*)((S).data))
 using namespace std;
-enum DataType { STACK, INTEGER, DOUBLE, TEXT, FUNCTION, IF, THEN, ELSE };
+enum DataType { STACK, INTEGER, DOUBLE, TEXT, SP, IF, THEN, ELSE };
 class Data{
 private:
 	int* refcount;
@@ -110,7 +110,7 @@ void njs_private_func_deepCopy(stack<Data>& stack1, stack<Data>& stack2){
 }
 void njs_private_func_eval(stack<Data>& s){
 	if (!s.empty()){
-		if (s.top().type == FUNCTION){
+		if (s.top().type == SP){
 			void(*njs_function)(stack<Data>&) = (void(*)(stack<Data>&))s.top().data; s.pop(); njs_function(s);
 		}
 		else if (s.top().type == IF){
