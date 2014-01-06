@@ -8,7 +8,7 @@
 #define _DOUBLE(S) (*(double*)((S).data))
 #define _TEXT(S) (*(string*)((S).data))
 using namespace std;
-enum DataType { STACK, INTEGER, DOUBLE, TEXT, SP, IF, THEN, ELSE };
+enum DataType { STACK, INTEGER, DOUBLE, TEXT, SP, IF, THEN, ELSE, RETURN };
 class Data{
 private:
 	int* refcount;
@@ -50,7 +50,7 @@ public:
 	}
 };
 
-void njs_private_func_eval(stack<Data>& s);
+bool njs_private_func_eval(stack<Data>& s);
 
 void njs_private_func_if_helper(stack<Data>& this_, int njs_temp_bool)
 {
@@ -111,7 +111,7 @@ void njs_private_func_deepCopy(stack<Data>& stack1, stack<Data>& stack2){
 	}
 	while (!tempStack.empty()){ stack2.push(tempStack.top()); tempStack.pop(); stack1.push(srcStack.top()); srcStack.pop(); }
 }
-void njs_private_func_eval(stack<Data>& s){
+bool njs_private_func_eval(stack<Data>& s){
 	if (!s.empty()){
 		if (s.top().type == SP){
 			void(*njs_function)(stack<Data>&) = (void(*)(stack<Data>&))s.top().data; s.pop(); njs_function(s);
@@ -119,6 +119,10 @@ void njs_private_func_eval(stack<Data>& s){
 		else if (s.top().type == IF){
 			njs_private_func_if(s);
 		}
+		else if(s.top().type == RETURN){
+			return false;
+		}
 	}
+	return true;
 }
 #endif

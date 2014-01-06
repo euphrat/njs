@@ -18,6 +18,7 @@ tokens {
 	INCLUDE = "include";
 	THIS = "this";
 	NULL = "null";
+	RETURN = "return";
 	PROGRAM;	
 	INCLUDE_LIST;
 	FUNCTION_LIST;
@@ -160,7 +161,7 @@ pushleft:
 
 pushright:
 (
-	(REF^ | SIZE^)? pushleft | INTEGER | DOUBLE | TEXT | IF | THEN | ELSE
+	(REF^ | SIZE^)? pushleft | INTEGER | DOUBLE | TEXT | IF | THEN | ELSE | RETURN
 );
 
 assignleft:
@@ -233,11 +234,11 @@ options {
 	{
 		if(name.equals("this_"))
 		{
-			code.println("\tnjs_private_func_eval(this_);");
+			code.println("\t{bool eval_status = njs_private_func_eval(this_); if(!eval_status) return;}");
 		}
 		else
 		{
-			code.println("\tnjs_private_func_eval(*_STACK("+name+"));");	
+			code.println("\t{bool eval_status = njs_private_func_eval(*_STACK("+name+")); if(!eval_status) return;}");	
 		}		
 	}	
 	
@@ -679,7 +680,7 @@ pop:
 
 
 push:
-#(PUSH (x1:IDENTIFIER | x2:THIS) (x3:IDENTIFIER | x4:THIS | #(x5:REF (x50:IDENTIFIER | x51:THIS)) | #(x6:SIZE (x60:IDENTIFIER | x61:THIS)) | x7:DOUBLE | x8:TEXT | x9:INTEGER | x10:IF | x11:THEN | x12:ELSE))
+#(PUSH (x1:IDENTIFIER | x2:THIS) (x3:IDENTIFIER | x4:THIS | #(x5:REF (x50:IDENTIFIER | x51:THIS)) | #(x6:SIZE (x60:IDENTIFIER | x61:THIS)) | x7:DOUBLE | x8:TEXT | x9:INTEGER | x10:IF | x11:THEN | x12:ELSE | x13:RETURN))
 {
 	if(x1 != null) //IDENTIFIER
 	{
@@ -763,9 +764,13 @@ push:
 		{
 			code.println("\t{Data njs_temp_data(NULL, THEN); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 		}
-		else
+		else if(x12 != null)
 		{
 			code.println("\t{Data njs_temp_data(NULL, ELSE); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
+		}
+		else
+		{
+			code.println("\t{Data njs_temp_data(NULL, RETURN); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 		}
 	}
 	else //THIS
@@ -846,9 +851,13 @@ push:
 		{
 			code.println("\t{Data njs_temp_data(NULL, THEN); this_.push(njs_temp_data);}");
 		}
-		else
+		else if(x12 != null)
 		{
 			code.println("\t{Data njs_temp_data(NULL, ELSE); this_.push(njs_temp_data);}");
+		}
+		else
+		{
+			code.println("\t{Data njs_temp_data(NULL, RETURN); this_.push(njs_temp_data);}");
 		}
 	}
 };
