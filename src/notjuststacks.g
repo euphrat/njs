@@ -13,12 +13,12 @@ tokens {
 	END = "end";	
 	IF = "if";
 	THEN = "then";
-	ELSE = "else";	
-	WHILE = "while";		
+	ELSE = "else";			
 	INCLUDE = "include";
 	THIS = "this";
 	NULL = "null";
 	RETURN = "return";
+	TYPEOF = "typeof";
 	PROGRAM;	
 	INCLUDE_LIST;
 	FUNCTION_LIST;
@@ -47,6 +47,7 @@ QUOTE: "\"";
 NEWLINECHAR: "\\n";
 TABCHAR: "\\t";
 ASSIGN: "=";
+COPY: ":=";
 SEMI : ";";
 REF: "&";
 PUSH: "<<";
@@ -62,9 +63,6 @@ COMMA: ",";
 
 TEXT:
   QUOTE (options {greedy=false;}:.)* QUOTE {};
-  
-//CPPINCLUDE:
-//  LPAR! TEXT (COMMA! TEXT)? RPAR!;
   
 CPPCODE:
   CPP! (options {greedy=false;}:.)* CPP! {};
@@ -145,7 +143,9 @@ EVAL^ evalarg |
 popleft POP^ popright |
 pushleft PUSH^ (pushright)+ |
 assignleft ASSIGN^ assignright |
-IDENTIFIER
+assignleft COPY^ assignright |
+IDENTIFIER |
+THIS
 );
 
 evalarg:
@@ -170,7 +170,7 @@ pushleft:
 
 pushright:
 (
-	(REF^ | SIZE^)? pushleft | INTEGER | DOUBLE | TEXT | IF | THEN | ELSE | RETURN
+	(REF^ | SIZE^)? pushleft | INTEGER | DOUBLE | TEXT | IF | THEN | ELSE | RETURN | TYPEOF
 );
 
 assignleft:
@@ -180,7 +180,7 @@ assignleft:
 
 assignright:
 (
-	(REF^)? pushleft
+	pushleft
 );
 
 
@@ -305,8 +305,7 @@ options {
 	}
 	
 	private void clearStackCode(String name)
-	{
-		//code.println("\twhile(!"+ name + ".empty()){"+ name + ".pop();}");
+	{		
 		if(name.equals("this_"))
 		{
 			code.println("\tthis_ = stack<Data>();");
@@ -321,11 +320,7 @@ options {
 	{		
 		if(dst.equals("this_"))
 		{
-			if(src.equals("this_"))
-			{
-				
-			}
-			else
+			if(!src.equals("this_"))
 			{
 				code.println("\tnjs_private_func_deepCopy(*_STACK("+src+"),this_);");
 			}
@@ -482,7 +477,7 @@ func:
 #(IDENTIFIER {
 	code.println("void njs_sp_" + #IDENTIFIER + "(stack<Data>& this_){");	
 	scope = #IDENTIFIER.getText();	
-} ((eval | pop | push | pop | newstack | assign)* | cppcode))
+} ((eval | pop | push | pop | newstack | clearthis | assign | deepcopy)* | cppcode))
 {
 	code.println("}");
 	scope = null;
@@ -501,6 +496,12 @@ x:IDENTIFIER
 	{
 		clearStackCode(getLocalStackName(x));		
 	}
+};
+
+clearthis:
+x:THIS
+{	
+	clearStackCode("this_");	
 };
 
 cppcode:
@@ -522,27 +523,23 @@ x:CPPCODE)
 };
 
 assign:
-#(ASSIGN (x1:IDENTIFIER | x2:THIS) (x3:IDENTIFIER | x4:THIS | #(x5:REF (x50:IDENTIFIER | x51:THIS))))
+#(ASSIGN (x1:IDENTIFIER | x2:THIS) (x3:IDENTIFIER | x4:THIS))
 {
 	if(x1 != null)
-	{
-		boolean exist = true; 
+	{		
 		if(!symbolTable.contains(x1+"@"+scope))
 		{
 			symbolTable.add(x1+"@"+scope);
 			createVariableCode(getLocalStackName(x1));			
-			exist = false;
-		}	
-		
+		}		
 		if(x3 != null)
 		{
-			if(symbolTable.contains(x3+"@"+scope) && !x1.getText().equals(x3.getText()))
-			{	
-				if(exist)
-				{
-					clearStackCode(getLocalStackName(x1));
-				}				
-				deepCopyCode(getLocalStackName(x1), getLocalStackName(x3));
+			if(symbolTable.contains(x3+"@"+scope))
+			{
+				if(!x1.getText().equals(x3.getText()))
+				{								
+					shallowCopyCode(getLocalStackName(x1), getLocalStackName(x3));
+				}
 			}			
 			else
 			{
@@ -550,43 +547,78 @@ assign:
 			}	
 		}
 		else if(x4 != null)
-		{
-			clearStackCode(getLocalStackName(x1));
-			deepCopyCode(getLocalStackName(x1), "this_");
-		}
-		else
-		{
-			if(x50 != null && !x1.getText().equals(x50.getText()))
-			{
-				shallowCopyCode(getLocalStackName(x1), getLocalStackName(x50));
-			}
-			else
-			{
-				shallowCopyCode(getLocalStackName(x1), "this_");
-			}
-		}
+		{			
+			shallowCopyCode(getLocalStackName(x1), "this_");
+		}		
 	}
 	else
 	{		
 		if(x3 != null)
 		{
 			if(symbolTable.contains(x3+"@"+scope))
-			{	
-				clearStackCode("this_");				
-				deepCopyCode("this_", getLocalStackName(x3));
+			{								
+				shallowCopyCode("this_", getLocalStackName(x3));
+			}			
+			else
+			{
+				System.err.println("ERROR: Stack \""+ x3 + "\" does not exist in stack processor \"" + scope + "\"");
+			}	
+		}		
+	}
+};
+
+deepcopy:
+#(COPY (x1:IDENTIFIER | x2:THIS) (x3:IDENTIFIER | x4:THIS))
+{
+	if(x1 != null)
+	{
+		boolean exists = true;		
+		if(!symbolTable.contains(x1+"@"+scope))
+		{
+			symbolTable.add(x1+"@"+scope);
+			createVariableCode(getLocalStackName(x1));	
+			exists = false;		
+		}		
+		if(x3 != null)
+		{
+			if(symbolTable.contains(x3+"@"+scope))
+			{								
+				if(!x1.getText().equals(x3.getText()))
+				{
+					if(exists)
+					{
+						clearStackCode(getLocalStackName(x1));	
+					}
+					deepCopyCode(getLocalStackName(x1), getLocalStackName(x3));
+				}
 			}			
 			else
 			{
 				System.err.println("ERROR: Stack \""+ x3 + "\" does not exist in stack processor \"" + scope + "\"");
 			}	
 		}
-		else if(x5 != null)		
-		{
-			if(x50 != null)
+		else if(x4 != null)
+		{	
+			if(exists)
 			{
-				shallowCopyCode("this_", getLocalStackName(x50));
+				clearStackCode(getLocalStackName(x1));	
+			}		
+			deepCopyCode(getLocalStackName(x1), "this_");
+		}		
+	}
+	else
+	{		
+		if(x3 != null)
+		{
+			if(symbolTable.contains(x3+"@"+scope))
+			{								
+				deepCopyCode("this_", getLocalStackName(x3));
 			}			
-		}
+			else
+			{
+				System.err.println("ERROR: Stack \""+ x3 + "\" does not exist in stack processor \"" + scope + "\"");
+			}	
+		}		
 	}
 };
 
@@ -642,7 +674,7 @@ pop:
 					createVariableCode(getLocalStackName(x60));					
 				}
 				code.println("\tif(!_STACK("+ getLocalStackName(x1) + ")->empty() && _STACK("+ getLocalStackName(x1) + ")->top().type == STACK){");
-				shallowCopyCode(getLocalStackName(x60), getLocalStackName(x1) );
+				shallowCopyCode(getLocalStackName(x60), "_STACK("+ getLocalStackName(x1) + ")->top()" );
 				code.println("\t_STACK("+ getLocalStackName(x1) + ")->pop();");
 				code.println("\t}");	
 			}	
@@ -689,7 +721,7 @@ pop:
 
 
 push:
-#(PUSH (x1:IDENTIFIER | x2:THIS) ((x3:IDENTIFIER | x4:THIS | #(x5:REF (x50:IDENTIFIER | x51:THIS)) | #(x6:SIZE (x60:IDENTIFIER | x61:THIS)) | x7:DOUBLE | x8:TEXT | x9:INTEGER | x10:IF | x11:THEN | x12:ELSE | x13:RETURN)
+#(PUSH (x1:IDENTIFIER | x2:THIS) ((x3:IDENTIFIER | x4:THIS | #(x5:REF (x50:IDENTIFIER | x51:THIS)) | #(x6:SIZE (x60:IDENTIFIER | x61:THIS)) | x7:DOUBLE | x8:TEXT | x9:INTEGER | x10:IF | x11:THEN | x12:ELSE | x13:RETURN | x14:TYPEOF)
 {
 	if(x1 != null) //IDENTIFIER
 	{
@@ -777,9 +809,13 @@ push:
 		{
 			code.println("\t{Data njs_temp_data(NULL, ELSE); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 		}
-		else
+		else if(x13 != null)
 		{
 			code.println("\t{Data njs_temp_data(NULL, RETURN); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
+		}
+		else
+		{
+			code.println("\t{Data njs_temp_data(NULL, TYPEOF); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 		}
 	}
 	else //THIS
@@ -864,12 +900,16 @@ push:
 		{
 			code.println("\t{Data njs_temp_data(NULL, ELSE); this_.push(njs_temp_data);}");
 		}
-		else
+		else if(x13 != null)
 		{
 			code.println("\t{Data njs_temp_data(NULL, RETURN); this_.push(njs_temp_data);}");
 		}
+		else
+		{
+			code.println("\t{Data njs_temp_data(NULL, TYPEOF); this_.push(njs_temp_data);}");
+		}
 	}
-	x3 = x4 = x5 = x6 = x7 = x8 = x9 = x10 = x11 = x12 = x13 = x50 = x51 = x60 = x61 = null;
+	x3 = x4 = x5 = x6 = x7 = x8 = x9 = x10 = x11 = x12 = x13 = x14 = x50 = x51 = x60 = x61 = null;
 }
 )*)
 ;

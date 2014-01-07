@@ -29,19 +29,16 @@ end
 sp selection_sort
 	N << return then 2 #this less_than if;
 	*N; *N;
-	minVal = &this;
+	minVal = this;
 	minVal << min_of_stack; *minVal;
-	rest = &this;
+	rest = this;
 	rest << minVal remove; *rest;
 	rest << selection_sort; *rest;
 	rest << minVal;
-	this = &rest;	
+	this = rest;	
 end
 
 sp main	
-	this << selection_sort;
-	*this;
-	this << "Sorted stack:" println;	
-	*this;
-	
+	this << selection_sort;	*this;
+	this << "Sorted stack:" println; *this;		
 end

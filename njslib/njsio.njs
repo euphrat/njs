@@ -195,8 +195,8 @@ sp println_pop
 end
 
 sp println
-	copy = &this;
+	copy = this;
 	this << println_pop;
 	*this;
-	this = &copy;
+	this = copy;
 end
