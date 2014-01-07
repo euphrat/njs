@@ -143,7 +143,7 @@ statement:
 (
 EVAL^ evalarg |
 popleft POP^ popright |
-pushleft PUSH^ pushright |
+pushleft PUSH^ (pushright)+ |
 assignleft ASSIGN^ assignright |
 IDENTIFIER
 );
@@ -689,7 +689,7 @@ pop:
 
 
 push:
-#(PUSH (x1:IDENTIFIER | x2:THIS) (x3:IDENTIFIER | x4:THIS | #(x5:REF (x50:IDENTIFIER | x51:THIS)) | #(x6:SIZE (x60:IDENTIFIER | x61:THIS)) | x7:DOUBLE | x8:TEXT | x9:INTEGER | x10:IF | x11:THEN | x12:ELSE | x13:RETURN))
+#(PUSH (x1:IDENTIFIER | x2:THIS) ((x3:IDENTIFIER | x4:THIS | #(x5:REF (x50:IDENTIFIER | x51:THIS)) | #(x6:SIZE (x60:IDENTIFIER | x61:THIS)) | x7:DOUBLE | x8:TEXT | x9:INTEGER | x10:IF | x11:THEN | x12:ELSE | x13:RETURN)
 {
 	if(x1 != null) //IDENTIFIER
 	{
@@ -869,6 +869,9 @@ push:
 			code.println("\t{Data njs_temp_data(NULL, RETURN); this_.push(njs_temp_data);}");
 		}
 	}
-};
+	x3 = x4 = x5 = x6 = x7 = x8 = x9 = x10 = x11 = x12 = x13 = x50 = x51 = x60 = x61 = null;
+}
+)*)
+;
 
 
