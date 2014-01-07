@@ -23,7 +23,8 @@ tokens {
 	INCLUDE_LIST;
 	FUNCTION_LIST;
 	FUNCTION_DEFINITION;
-	STATEMENT;	
+	STATEMENT;
+	CPPINCLUDE;	
 }
 
 COMMENT : "%"
@@ -62,8 +63,8 @@ COMMA: ",";
 TEXT:
   QUOTE (options {greedy=false;}:.)* QUOTE {};
   
-CPPINCLUDE:
-  LPAR! TEXT (COMMA! TEXT)? RPAR!;
+//CPPINCLUDE:
+//  LPAR! TEXT (COMMA! TEXT)? RPAR!;
   
 CPPCODE:
   CPP! (options {greedy=false;}:.)* CPP! {};
@@ -124,11 +125,19 @@ function_definition: (FUNC! x:IDENTIFIER^
 		NotJustStacksWalker.symbolTable.add("@"+x.getText());
 	}
 } 
-((statement SEMI!)* | (CPPINCLUDE)* CPPCODE)  END!)
+((statement SEMI!)* | (cppinclude)* CPPCODE)  END!)
 {
 	#function_definition = #([FUNCTION_DEFINITION,"FUNCTION_DEFINITION"],#function_definition);	
 };
 
+
+cppinclude:
+(
+	LPAR! TEXT (COMMA! TEXT)? RPAR!
+)
+{
+	#cppinclude = #([CPPINCLUDE,"CPPINCLUDE"],#cppinclude);	
+};
 
 statement: 
 (
@@ -182,7 +191,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.BufferedReader;
 import java.util.concurrent.ConcurrentSkipListSet;
-import java.util.StringTokenizer;
 }
 
 class NotJustStacksWalker extends TreeParser;
@@ -496,16 +504,17 @@ x:IDENTIFIER
 };
 
 cppcode:
-((y:CPPINCLUDE {
-			StringTokenizer tokenizer = new StringTokenizer(y.getText(), "\"\"");
-			String includeFile = (String)tokenizer.nextElement();
-			headerCode.println("#include\""+includeFile+"\"");			
-			if(tokenizer.hasMoreElements())
+((y:CPPINCLUDE {			
+			AST includeFileTree = y.getFirstChild();
+			String includeFile = includeFileTree.getText();
+			headerCode.println("#include"+includeFile);			
+			if(y.getNumberOfChildren() > 1)
 			{
-				String libraryName = (String)tokenizer.nextElement();
+				AST libraryTree = includeFileTree.getNextSibling();
+				String libraryName = libraryTree.getText();
+				libraryName = libraryName.substring(1, libraryName.length()-1);
 				linkInfo.print(" -l"+libraryName);
-			}		
-			
+			}			
 	       })* 
 x:CPPCODE)
 {

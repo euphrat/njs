@@ -78,8 +78,6 @@ public class NotJustStacks {
 		NotJustStacksWalker.headerCode.close();
 		NotJustStacksWalker.linkInfo.close();
 		//ASTFrame frame = new ASTFrame("Not Just Stacks", tree);
-		//frame.setVisible(true);
-		
+		//frame.setVisible(true);		
 	}
-
 }
