@@ -194,9 +194,46 @@ sp println_pop
 ??
 end
 
+sp print_pop
+??
+	while(!this_.empty()){
+		Data A = this_.top();
+		switch(A.type)
+		{
+			case DOUBLE:
+				cout << *(double*)A.data << " "; break;
+			case INTEGER:
+				cout << *(int*)A.data << " "; break;
+			case TEXT:
+				cout << *(string*)A.data << " "; break;
+			case IF:
+				cout << "IF" << " "; break;
+			case THEN:
+				cout << "THEN" << " "; break;
+			case ELSE:
+				cout << "ELSE" << " "; break;
+			case SP:
+				cout << "STACK_PROCESSOR [name]" << " "; break;
+			case STACK:
+				stack<Data> temp = *(stack<Data>*)A.data;
+				cout << "STACK [" << temp.size() << "]" << " ";			
+				break;			
+		}
+		this_.pop();
+	}
+??
+end
+
 sp println
 	copy = this;
 	this << println_pop;
+	*this;
+	this = copy;
+end
+
+sp print
+	copy = this;
+	this << print_pop;
 	*this;
 	this = copy;
 end
