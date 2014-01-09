@@ -25,7 +25,7 @@ public class NotJustStacks {
 		else if(args.length == 3 && args[0].equals("-lib"))
 		{			
 			NotJustStacksWalker.isExe = false;
-			NotJustStacksWalker.libname = args[2];
+			NotJustStacksWalker.libname = args[2].toUpperCase();
 			hFile = args[2]+".h";
 		}
 		else

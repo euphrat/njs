@@ -386,8 +386,9 @@ program:
 		}
 	}
 	
-	headerCode.println("#ifndef NJS_PROGRAM_HEADER");
-	headerCode.println("#define NJS_PROGRAM_HEADER");
+	
+	headerCode.println("#ifndef " + libname + "_NJS_HEADER");
+	headerCode.println("#define " + libname + "_NJS_HEADER");
 	headerCode.println("#include<stack>");
 	headerCode.println("#include\"njs.h\"");
 	if(isExe)
