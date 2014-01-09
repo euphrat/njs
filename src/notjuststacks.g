@@ -140,7 +140,7 @@ cppinclude:
 statement: 
 (
 EVAL^ evalarg |
-popleft POP^ popright |
+popleft POP^ (popright)+ |
 pushleft PUSH^ (pushright)+ |
 assignleft ASSIGN^ assignright |
 assignleft COPY^ assignright |
@@ -644,7 +644,7 @@ eval:
 };
 
 pop:
-#(POP (x1:IDENTIFIER | x2:THIS) (x3:IDENTIFIER | x4:THIS | x5:NULL | #(x6:REF x60:IDENTIFIER)))
+#(POP (x1:IDENTIFIER | x2:THIS) ((x3:IDENTIFIER | x4:THIS | x5:NULL | #(x6:REF x60:IDENTIFIER))
 {
 	if(x1 != null) //IDENTIFIER
 	{
@@ -717,8 +717,10 @@ pop:
 			code.println("\t}");	
 		}		
 	}
-	
-};
+	x3 = x4 = x5 = x6 = x60 = null;
+}
+)*)
+;
 
 
 push:

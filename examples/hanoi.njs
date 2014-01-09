@@ -10,31 +10,22 @@ end
 
 sp hanoi2
 	this >> n;
-	this >> &A;
-	this >> &B;
-	this >> &C;
+	this >> &A &B &C;	
 	this << &C &B &A return else then n if; *this; *this;
 	N << 1 n subtract; *N;
 	X << &B &C &A N hanoi2; *X;
-	X >> &A;
-	X >> &C;
-	X >> &B;
+	X >> &A &C &B;	
 	A >> C;	
 	Y << &C &A &B N hanoi2; *Y;
-	Y >> &B;
-	Y >> &A;
-	Y >> &C;
+	Y >> &B &A &C;	
 	this << &C &B &A;	
 end
 
 sp main
 	A = this;
-	B;
-	C;
+	B; C; % create empty stacks
 	X << &C &B &A hanoi; *X;
-	X >> &A;
-	X >> &B;
-	X >> &C;
+	X >> &A &B &C;	
 	A << "A:" print; *A;
 	X << "" println_pop; *X;
 	B << "B:" print; *B;
