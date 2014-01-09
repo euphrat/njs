@@ -11,11 +11,11 @@ if [ -f njstemp.cpp ]
 then
 	if [ $1 == "-exe" ]
 	then 
-			g++  -I$NJS_HOME/include -fpermissive -w -o $3 njstemp.cpp `cat njslink.txt`
+			g++  -I$NJS_HOME/include -fpermissive -w -o $3 njstemp.cpp -L$NJS_HOME/bin -lnjs `cat njslink.txt`
 	else
 			if [ $1 == "-lib" ]
 			then
-				g++ -shared -fPIC -I$NJS_HOME/include -fpermissive -w -o lib$3.so njstemp.cpp `cat njslink.txt`
+				g++ -shared -fPIC -I$NJS_HOME/include -fpermissive -w -o lib$3.so njstemp.cpp -L$NJS_HOME/bin -lnjs `cat njslink.txt`
 			fi
 	fi
 	rm -f njstemp.cpp njstemp.h njslink.txt
