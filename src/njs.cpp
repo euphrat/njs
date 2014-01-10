@@ -118,7 +118,7 @@ bool njs_private_func_eval(stack<Data>& s){
 			case SP: njs_function = (void(*)(stack<Data>&))s.top().data; s.pop(); njs_function(s); break;
 			case IF: njs_private_func_if(s); break;
 			case TYPEOF: s.pop(); if(!s.empty()) {s.push(Data(new string(Data::DataTypeStrings[s.top().type]), TEXT));} break;
-			case RETURN: return false;		
+			case RETURN: s.pop(); return false;		
 		}		
 	}
 	return true;

@@ -38,7 +38,66 @@ sp selection_sort
 	this = rest;	
 end
 
+sp mergesort
+	X << return else #this if; *X; *X;
+	this << split; *this;
+	this >> &A &B;
+	A << mergesort; *A;
+	B << mergesort; *B;
+	this << &B &A merge; *this;	
+end
+
+sp split	
+	n << 2 #this divide; *n;
+	Empty;	
+	X << &Empty &this n move; *X;	
+	this;	
+	X >> this this; 
+end
+
+sp move
+	this >> n &A &B;			
+	this << &B &A return else n if; *this; *this;
+	A >> B;
+	m << 1 n subtract; *m;	
+	this << &B &A m move; *this;
+end
+
+sp merge
+	this >> &B &A;
+	this = A;	
+	Q << return else #B if; *Q; *Q;
+	this = B;
+	Q << return else #A if; *Q; *Q;
+	this;
+	X << A B strcmp; *X;
+	this << B popB else A popA then 0 X greater_than if; *this;
+	this >> func;
+	Z << &A &B func; *Z;	
+	Z << merge; *Z;
+	this >> Z;
+	this = Z;
+end
+
+sp popA
+	this >> &B &A;
+	A >> null;
+	this << &A &B;
+end
+
+sp popB
+	this >> &B &A;
+	B >> null;
+	this << &A &B;
+end
+
 sp main	
-	this << selection_sort;	*this;
-	this << "Sorted stack:" println; *this;		
+	X = this;
+	this << mergesort; *this;
+	this << "Sorted stack:" print; *this;	
+	Y << "" println_pop; *Y;
+	X << split; *X;
+	X >> &A &B;
+	A << "A:" print; *A; Y << "" println_pop; *Y;	
+	B << "B:" print; *B; Y << "" println_pop; *Y;
 end

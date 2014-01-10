@@ -212,6 +212,8 @@ sp print_pop
 				cout << "THEN" << " "; break;
 			case ELSE:
 				cout << "ELSE" << " "; break;
+			case RETURN:
+				cout << "RETURN" << " "; break;
 			case SP:
 				cout << "STACK_PROCESSOR [name]" << " "; break;
 			case STACK:
