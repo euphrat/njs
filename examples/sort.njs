@@ -39,9 +39,9 @@ sp selection_sort
 end
 
 sp mergesort
-	X << return else #this if; *X; *X;
+	X << return then 2 #this less_than if; *X; *X;
 	this << split; *this;
-	this >> &A &B;
+	this >> &A &B;	
 	A << mergesort; *A;
 	B << mergesort; *B;
 	this << &B &A merge; *this;	
@@ -91,13 +91,9 @@ sp popB
 	this << &A &B;
 end
 
-sp main	
+sp main
 	X = this;
 	this << mergesort; *this;
 	this << "Sorted stack:" print; *this;	
-	Y << "" println_pop; *Y;
-	X << split; *X;
-	X >> &A &B;
-	A << "A:" print; *A; Y << "" println_pop; *Y;	
-	B << "B:" print; *B; Y << "" println_pop; *Y;
+	Y << "" println_pop; *Y;	
 end
