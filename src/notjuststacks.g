@@ -116,7 +116,7 @@ function_definition: (FUNC! x:IDENTIFIER^
 {
 	if(NotJustStacksWalker.symbolTable.contains("@"+x.getText()))
 	{
-		System.err.println("ERROR: Redefition of stack processor \""+ x.getText() + "\".");
+		System.err.println("ERROR: Stack processor \""+ x.getText() + "\" has already been defined.");
 	}
 	else
 	{
@@ -223,7 +223,16 @@ options {
 			while ((line = br.readLine()) != null) {
 			   if(line.substring(0,2).equals("//"))
 			   {
-			   		symbolTable.add("@"+line.substring(2,line.length()));
+			   		String functionName = line.substring(2,line.length());
+			   		String functionEntry = "@"+functionName;
+			   		if(symbolTable.contains(functionEntry))
+			   		{
+			   			System.err.println("ERROR: Stack processor \""+ functionName + "\" has already been defined.");
+			   		}
+			   		else
+			   		{
+			   			symbolTable.add(functionEntry);
+			   		}
 			   }
 			   else
 			   {
