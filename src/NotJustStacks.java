@@ -53,7 +53,7 @@ public class NotJustStacks {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		if(NotJustStacksWalker.isExe && !NotJustStacksWalker.symbolTable.contains("@main"))
+		if(NotJustStacksWalker.isExe && !NotJustStacksWalker.symbolTable.contains("@"+NotJustStacksWalker.libname+"::main"))
 		{
 			System.err.println("ERROR: Stack processor \"main\" is missing.");
 			return;

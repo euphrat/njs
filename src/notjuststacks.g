@@ -120,7 +120,7 @@ function_definition: (FUNC! x:IDENTIFIER^
 	}
 	else
 	{
-		NotJustStacksWalker.symbolTable.add("@"+x.getText());
+		NotJustStacksWalker.symbolTable.add("@"+NotJustStacksWalker.libname+"::"+x.getText());
 	}
 } 
 ((statement SEMI!)* | (cppinclude)* CPPCODE)  END!)
@@ -208,7 +208,7 @@ options {
 	private String scope = null;
 	public static ConcurrentSkipListSet<String> symbolTable = new ConcurrentSkipListSet<String>();
 	public static boolean isExe = true;
-	public static String libname = "";
+	public static String libname = "EXE";
 	
 	private String getLocalStackName(AST a)
 	{
@@ -399,7 +399,8 @@ program:
 	headerCode.println("#ifndef " + libname + "_NJS_HEADER");
 	headerCode.println("#define " + libname + "_NJS_HEADER");
 	headerCode.println("#include<stack>");
-	headerCode.println("#include\"njs.h\"");
+	headerCode.println("#include\"njs.h\"");	
+	headerCode.println("namespace " + libname + "{");
 	if(isExe)
 	{
 		headerCode.println("#define " + libname + "_NJS_API");
@@ -418,7 +419,7 @@ program:
 	}	
 	
 	code.println("#include\"" + NotJustStacks.hFile + "\"");
-	code.println("#include\"njs.h\"");
+	code.println("#include\"njs.h\"");		
 } 
 #(PROGRAM include_list function_list)
 {
@@ -430,17 +431,21 @@ program:
 		code.println("#endif _WIN32");
 		code.println("return 0;}");
 	}
-	headerCode.println("using namespace std;");	
+	code.println("}");
+		
 	
 	String[] symbols = symbolTable.toArray(new String[0]);
 	for(int i = 0; i < symbols.length; i++)
-	{
-		if(symbols[i].substring(0,1).equals("@"))
+	{		
+		if(symbols[i].startsWith("@"+libname+"::"))
 		{
-			headerCode.println(libname + "_NJS_API void njs_sp_"+ symbols[i].substring(1) + "(stack<Data>&);");	
+			String temp = symbols[i].substring(1);
+			temp = temp.replace(libname+"::", "");
+			headerCode.println(libname + "_NJS_API void njs_sp_"+ temp + "(stack<Data>&);");	
 		}	
 	}
-	
+	headerCode.println("}");
+	headerCode.println("using namespace std;");
 	headerCode.println("#endif");
 };
 
@@ -474,7 +479,10 @@ include_list:
 		System.err.println("ERROR: Library "+ libraryName + " cannot be found.");
 	}	
 }
-)*);
+)*)
+{
+code.println("namespace " + libname + "{");
+};
 
 function_list:
 #(FUNCTION_LIST (funcdef)*);
@@ -518,7 +526,9 @@ cppcode:
 ((y:CPPINCLUDE {			
 			AST includeFileTree = y.getFirstChild();
 			String includeFile = includeFileTree.getText();
-			headerCode.println("#include"+includeFile);			
+			headerCode.println("}");
+			headerCode.println("#include"+includeFile);
+			headerCode.println("namespace " + libname + "{");			
 			if(y.getNumberOfChildren() > 1)
 			{
 				AST libraryTree = includeFileTree.getNextSibling();
@@ -748,7 +758,7 @@ push:
 			{					
 				pushCode(getLocalStackName(x1), getLocalStackName(x3));
 			}
-			else if(symbolTable.contains("@"+x3)) //FUNCTION
+			else if(symbolTable.contains("@"+libname+"::"+x3)) //FUNCTION
 			{
 				code.println("\t{Data njs_temp_data(&njs_sp_"+ x3 + ",SP); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 			}
@@ -838,7 +848,7 @@ push:
 			{	
 				pushCode("this_", getLocalStackName(x3));				
 			}
-			else if(symbolTable.contains("@"+x3)) //FUNCTION
+			else if(symbolTable.contains("@"+libname+"::"+x3)) //FUNCTION
 			{
 				code.println("\t{Data njs_temp_data(&njs_sp_"+ x3 + ",SP); this_.push(njs_temp_data);}");
 			}
