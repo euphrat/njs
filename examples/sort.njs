@@ -3,6 +3,7 @@
 include "njsmath":math
 include "njsio":io
 include "njsstring":string
+include "njscommon":common
 
 sp min_of_stack
 	N << return then 2 #this $math.less_than if; *N; *N;	
@@ -38,29 +39,12 @@ sp selection_sort
 	this = rest;	
 end
 
-sp mergesort
-	X << return then 2 #this $math.less_than if; *X; *X;
-	this << split; *this;
-	this >> &A &B;	
-	A << mergesort; *A;
-	B << mergesort; *B;
-	this << &B &A merge; *this;	
-end
-
-sp split	
+sp ms_split	
 	n << 2 #this $math.divide; *n;
 	Empty;	
-	X << &Empty &this n move; *X;	
+	X << &Empty &this n $common.move; *X;	
 	this;	
 	X >> this this; 
-end
-
-sp move
-	this >> n &A &B;			
-	this << &B &A return else n if; *this; *this;
-	A >> B;
-	m << 1 n $math.subtract; *m;	
-	this << &B &A m move; *this;
 end
 
 sp merge
@@ -91,9 +75,46 @@ sp popB
 	this << &A &B;
 end
 
-sp main
-	X = this;
-	this << mergesort; *this;
+sp qs_split
+	this >> pivot;
+	this >> &X;	
+	small; large;
+	this << &large &small return else #X if; *this; *this;
+	cmp << X pivot $string.strcmp; *cmp;
+	small << X then 0 cmp $math.greater_than if; *small;
+	large << X else 0 cmp $math.greater_than if; *large;	
+	X >> null;
+	A << &X pivot qs_split; *A;
+	A >> &small2 &large2;
+	small >> small2;
+	large >> large2;	
+	this << &large2 &small2;
+end
+
+%% mutual recursion example: quickmergesort :)
+
+sp mergesort
+	X << return then 2 #this $math.less_than if; *X; *X;
+	this << ms_split; *this;
+	this >> &A &B;	
+	A << quicksort; *A;
+	B << quicksort; *B;
+	this << &B &A merge; *this;	
+end
+
+sp quicksort
+	X << return then 2 #this $math.less_than if; *X; *X;
+	this >> pivot;
+	X << &this pivot qs_split; *X;
+	X >> &small &large;
+	small << mergesort; *small;
+	large << mergesort; *large;
+	small << pivot $common.push_back; *small;
+	this << &large &small $common.concatenate; *this;	
+end
+
+sp main	
+	this << quicksort; *this;
 	this << "Sorted stack:" $io.print; *this;	
 	Y << "" $io.println_pop; *Y;	
 end
