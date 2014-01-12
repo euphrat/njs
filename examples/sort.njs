@@ -1,25 +1,25 @@
 %% example run: ./sort 5 4 2 4 6 3 2
 
-include "njsmath"
-include "njsio"
-include "njsstring"
+include "njsmath":math
+include "njsio":io
+include "njsstring":string
 
 sp min_of_stack
-	N << return then 2 #this less_than if; *N; *N;	
+	N << return then 2 #this $math.less_than if; *N; *N;	
 	this >> X;
 	this << min_of_stack; *this;	
 	this >> Y;	
-	A << X Y strcmp; *A;	
-	Result << X else Y then A 0 greater_than if; *Result;	
+	A << X Y $string.strcmp; *A;	
+	Result << X else Y then A 0 $math.greater_than if; *Result;	
 	this << Result;	
 end
 
 sp remove
 	this >> toBeRemoved;
-	N << return then 1 #this less_than if; *N; *N;	
+	N << return then 1 #this $math.less_than if; *N; *N;	
 	toBeTested << this;
 	this << toBeRemoved;
-	this << strcmp;	*this;
+	this << $string.strcmp;	*this;
 	this >> cond;	
 	Result << return else cond if; *Result; *Result;
 	this << toBeRemoved remove; *this;
@@ -27,7 +27,7 @@ sp remove
 end
 
 sp selection_sort
-	N << return then 2 #this less_than if;
+	N << return then 2 #this $math.less_than if;
 	*N; *N;
 	minVal = this;
 	minVal << min_of_stack; *minVal;
@@ -39,7 +39,7 @@ sp selection_sort
 end
 
 sp mergesort
-	X << return then 2 #this less_than if; *X; *X;
+	X << return then 2 #this $math.less_than if; *X; *X;
 	this << split; *this;
 	this >> &A &B;	
 	A << mergesort; *A;
@@ -48,7 +48,7 @@ sp mergesort
 end
 
 sp split	
-	n << 2 #this divide; *n;
+	n << 2 #this $math.divide; *n;
 	Empty;	
 	X << &Empty &this n move; *X;	
 	this;	
@@ -59,7 +59,7 @@ sp move
 	this >> n &A &B;			
 	this << &B &A return else n if; *this; *this;
 	A >> B;
-	m << 1 n subtract; *m;	
+	m << 1 n $math.subtract; *m;	
 	this << &B &A m move; *this;
 end
 
@@ -70,8 +70,8 @@ sp merge
 	this = B;
 	Q << return else #A if; *Q; *Q;
 	this;
-	X << A B strcmp; *X;
-	this << B popB else A popA then 0 X greater_than if; *this;
+	X << A B $string.strcmp; *X;
+	this << B popB else A popA then 0 X $math.greater_than if; *this;
 	this >> func;
 	Z << &A &B func; *Z;	
 	Z << merge; *Z;
@@ -94,6 +94,6 @@ end
 sp main
 	X = this;
 	this << mergesort; *this;
-	this << "Sorted stack:" print; *this;	
-	Y << "" println_pop; *Y;	
+	this << "Sorted stack:" $io.print; *this;	
+	Y << "" $io.println_pop; *Y;	
 end

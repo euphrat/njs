@@ -58,7 +58,10 @@ CPP: "??";
 LPAR: "(";
 RPAR: ")";
 AT: "@";
+DOLLAR: "$";
 COMMA: ",";
+COL: ":";
+DOT: ".";
 
 
 TEXT:
@@ -71,7 +74,8 @@ IDENTIFIER options {testLiterals=true;}:
 		LETTER(LETTER |'_' | DIGIT)*   
 		;
 
-
+NSFUNCID:
+	DOLLAR! IDENTIFIER DOT IDENTIFIER;
 
 protected 
 DIGIT:  ('0'..'9');
@@ -105,7 +109,7 @@ include_list: (include_item)*
 	#include_list = #([INCLUDE_LIST,"INCLUDE_LIST"],#include_list);
 };
 
-include_item: (INCLUDE^ TEXT (AT! TEXT)?);
+include_item: (INCLUDE^ TEXT (AT! TEXT)? (COL! IDENTIFIER));
 
 function_list: (funcdef: function_definition)+
 {
@@ -114,13 +118,14 @@ function_list: (funcdef: function_definition)+
 
 function_definition: (FUNC! x:IDENTIFIER^
 {
-	if(NotJustStacksWalker.symbolTable.contains("@"+x.getText()))
+	String functionEntry = "@"+NotJustStacksWalker.libname+"::"+x.getText();
+	if(NotJustStacksWalker.symbolTable.contains(functionEntry))
 	{
 		System.err.println("ERROR: Stack processor \""+ x.getText() + "\" has already been defined.");
 	}
 	else
 	{
-		NotJustStacksWalker.symbolTable.add("@"+NotJustStacksWalker.libname+"::"+x.getText());
+		NotJustStacksWalker.symbolTable.add(functionEntry);
 	}
 } 
 ((statement SEMI!)* | (cppinclude)* CPPCODE)  END!)
@@ -170,7 +175,7 @@ pushleft:
 
 pushright:
 (
-	(REF^ | SIZE^)? pushleft | INTEGER | DOUBLE | TEXT | IF | THEN | ELSE | RETURN | TYPEOF
+	(REF^ | SIZE^)? pushleft | INTEGER | DOUBLE | TEXT | IF | THEN | ELSE | RETURN | TYPEOF | NSFUNCID
 );
 
 assignleft:
@@ -191,6 +196,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.BufferedReader;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.ConcurrentSkipListMap;
 }
 
 class NotJustStacksWalker extends TreeParser;
@@ -209,6 +215,7 @@ options {
 	public static ConcurrentSkipListSet<String> symbolTable = new ConcurrentSkipListSet<String>();
 	public static boolean isExe = true;
 	public static String libname = "EXE";
+	private static ConcurrentSkipListMap<String,String> namespaceMap = new ConcurrentSkipListMap<String,String>();
 	
 	private String getLocalStackName(AST a)
 	{
@@ -423,15 +430,16 @@ program:
 } 
 #(PROGRAM include_list function_list)
 {
+	code.println("}");
 	if(isExe)
 	{
-		code.println("int main(int argc, char* argv[]){stack<Data> mainStack; for(int i = 1; i < argc; i++) {Data d(new string(argv[i]), TEXT); mainStack.push(d);} njs_sp_main(mainStack);");	
+		code.println("int main(int argc, char* argv[]){stack<Data> mainStack; for(int i = 1; i < argc; i++) {Data d(new string(argv[i]), TEXT); mainStack.push(d);}"+ libname + "::njs_sp_main(mainStack);");	
 		code.println("#ifdef _WIN32");
 		code.println("cout << \"Press enter to continue...\" << endl; getchar();");
 		code.println("#endif _WIN32");
 		code.println("return 0;}");
 	}
-	code.println("}");
+	
 		
 	
 	String[] symbols = symbolTable.toArray(new String[0]);
@@ -454,7 +462,8 @@ include_list:
 #(INCLUDE_LIST (x:INCLUDE
 {	
 	int numTexts = x.getNumberOfChildren();
-	String libraryName = x.getFirstChild().getText();
+	AST firstChild = x.getFirstChild();
+	String libraryName = firstChild.getText();
 	libraryName = libraryName.substring(1, libraryName.length()-1);
 	String headerFileName = libraryName + ".h";
 	String libraryDir = null;		
@@ -462,10 +471,27 @@ include_list:
 	{
 		libraryDir = System.getenv("NJS_HOME") + "/njslib/";			
 	}
+	else if(numTexts == 2)
+	{
+		AST child = firstChild.getNextSibling();
+		String temp = child.getText();
+		if(child.getType() == TEXT)
+		{
+			libraryDir = temp.substring(1, temp.length()-1);
+		}
+		else
+		{
+			namespaceMap.put(temp, libraryName.toUpperCase());
+			libraryDir = System.getenv("NJS_HOME") + "/njslib/";	
+		}
+	}
 	else
 	{
-		String temp = x.getFirstChild().getNextSibling().getText();
-		libraryDir = temp.substring(1, temp.length()-1);
+		AST temp = firstChild.getNextSibling();
+		String temp1 = temp.getText();
+		String temp2 = temp.getNextSibling().getText();
+		libraryDir = temp1.substring(1, temp1.length()-1);
+		namespaceMap.put(temp2, libraryName.toUpperCase());
 	}
 	String headerFullPath = libraryDir + "/" + headerFileName;		
 	if(new File(headerFullPath).exists())
@@ -743,7 +769,7 @@ pop:
 
 
 push:
-#(PUSH (x1:IDENTIFIER | x2:THIS) ((x3:IDENTIFIER | x4:THIS | #(x5:REF (x50:IDENTIFIER | x51:THIS)) | #(x6:SIZE (x60:IDENTIFIER | x61:THIS)) | x7:DOUBLE | x8:TEXT | x9:INTEGER | x10:IF | x11:THEN | x12:ELSE | x13:RETURN | x14:TYPEOF)
+#(PUSH (x1:IDENTIFIER | x2:THIS) ((x3:IDENTIFIER | x4:THIS | #(x5:REF (x50:IDENTIFIER | x51:THIS)) | #(x6:SIZE (x60:IDENTIFIER | x61:THIS)) | x7:DOUBLE | x8:TEXT | x9:INTEGER | x10:IF | x11:THEN | x12:ELSE | x13:RETURN | x14:TYPEOF | x15:NSFUNCID)
 {
 	if(x1 != null) //IDENTIFIER
 	{
@@ -835,9 +861,29 @@ push:
 		{
 			code.println("\t{Data njs_temp_data(NULL, RETURN); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 		}
-		else
+		else if(x14 != null)
 		{
 			code.println("\t{Data njs_temp_data(NULL, TYPEOF); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
+		}
+		else
+		{			
+			String[] parts = x15.getText().split("\\.");			
+			if(namespaceMap.containsKey(parts[0]))
+			{
+				String ns = namespaceMap.get(parts[0]);
+				if(symbolTable.contains("@"+ns+"::"+parts[1])) //FUNCTION
+				{
+					code.println("\t{Data njs_temp_data(&" + ns +"::njs_sp_"+ parts[1] + ",SP); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
+				}
+				else
+				{
+					System.err.println("ERROR: Stack processor \""+ x14 + "\" is not defined.");
+				}
+			}
+			else
+			{
+				System.err.println("ERROR: Library alias \"" + parts[0] + "\" does not exist.");
+			}			
 		}
 	}
 	else //THIS
@@ -926,12 +972,32 @@ push:
 		{
 			code.println("\t{Data njs_temp_data(NULL, RETURN); this_.push(njs_temp_data);}");
 		}
-		else
+		else if(x14 != null)
 		{
 			code.println("\t{Data njs_temp_data(NULL, TYPEOF); this_.push(njs_temp_data);}");
 		}
+		else
+		{
+			String[] parts = x15.getText().split("\\.");
+			if(namespaceMap.containsKey(parts[0]))
+			{
+				String ns = namespaceMap.get(parts[0]);
+				if(symbolTable.contains("@"+ns+"::"+parts[1])) //FUNCTION
+				{
+					code.println("\t{Data njs_temp_data(&" + ns +"::njs_sp_"+ parts[1] + ",SP); this_.push(njs_temp_data);}");
+				}
+				else
+				{
+					System.err.println("ERROR: Stack processor \""+ x14 + "\" is not defined.");
+				}
+			}
+			else
+			{
+				System.err.println("ERROR: Library alias \"" + parts[0] + "\" does not exist.");
+			}	
+		}
 	}
-	x3 = x4 = x5 = x6 = x7 = x8 = x9 = x10 = x11 = x12 = x13 = x14 = x50 = x51 = x60 = x61 = null;
+	x3 = x4 = x5 = x6 = x7 = x8 = x9 = x10 = x11 = x12 = x13 = x14 = x15 = x50 = x51 = x60 = x61 = null;
 }
 )*)
 ;

@@ -1,25 +1,25 @@
-include "njsmath" 
-include "njsio"
+include "njsmath":math 
+include "njsio":io
 
 sp main
-	this << println_text;
+	this << $io.println_text;
 	*this;
-	this << println_pop_text;
+	this << $io.println_pop_text;
 	*this;
-	this << println_pop_text;
+	this << $io.println_pop_text;
 	*this;
 	X << "abc";
 	X << 3;
 	X << 5;
-	X << pow;
+	X << $math.pow;
 	*X;
 	X << main;
 	X << if;
 	X << then;
 	X << else;
-	X << println;
+	X << $io.println;
 	*X;
 	X << "*******";
-	X << println;
+	X << $io.println;
 	*X;
 end

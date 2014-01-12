@@ -1,9 +1,9 @@
-include "njsio"
-include "njscommon"
+include "njsio":io
+include "njscommon":common
 
 sp main
-	this << 5 push_back; *this;
-	this << reverse; *this;
-	this << print; *this;
-	X << "" println_pop; *X;
+	this << 5 $common.push_back; *this;
+	this << $common.reverse; *this;
+	this << $io.print; *this;
+	X << "" $io.println_pop; *X;
 end
