@@ -32,9 +32,8 @@ end
 sp concatenate
 	this >> &A &B;
 	A << reverse; *A;
-	X << &A &B #B move; *X;
-	X >> null &A;
-	A << reverse; *A;
-	this = A;
+	X << &B &A #A move; *X;
+	X >> null &B;
+	this = B;
 end
 

@@ -76,8 +76,7 @@ sp popB
 end
 
 sp qs_split
-	this >> pivot;
-	this >> &X;	
+	this >> pivot &X;	
 	small; large;
 	this << &large &small return else #X if; *this; *this;
 	cmp << X pivot $string.strcmp; *cmp;
@@ -109,7 +108,7 @@ sp quicksort
 	X >> &small &large;
 	small << mergesort; *small;
 	large << mergesort; *large;
-	small << pivot $common.push_back; *small;
+	large << pivot;
 	this << &large &small $common.concatenate; *this;	
 end
 
