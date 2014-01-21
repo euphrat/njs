@@ -262,7 +262,7 @@ options {
 		}
 		else
 		{
-			code.println("\t{bool eval_status = njs_private_func_eval(*_STACK("+name+")); if(!eval_status) return;}");	
+			code.println("\t{bool eval_status = njs_private_func_eval("+name+"); if(!eval_status) return;}");	
 		}		
 	}	
 	
@@ -276,14 +276,14 @@ options {
 			}
 			else
 			{
-				code.println("\tif(!_STACK("+src+")->empty()){Data njs_temp_data = _STACK("+ src +")->top(); _STACK("+ src +")->pop(); this_.push(njs_temp_data);}");
+				code.println("\tif(!_STACK("+src+")->empty()){Data njs_temp_data = _STACK("+ src +")->top(); _STACK("+ src +")->pop(); _STACK(this_)->push(njs_temp_data);}");
 			}
 		}
 		else
 		{
 			if(src.equals("this_"))
 			{
-				code.println("\tif(!this_.empty()){Data njs_temp_data = this_.top(); this_.pop(); _STACK(" + dst + ")->push(njs_temp_data);}");
+				code.println("\tif(!_STACK(this_)->empty()){Data njs_temp_data = _STACK(this_)->top(); _STACK(this_)->pop(); _STACK(" + dst + ")->push(njs_temp_data);}");
 			}
 			else
 			{
@@ -298,18 +298,18 @@ options {
 		{
 			if(src.equals("this_"))
 			{
-				code.println("\tif(!this_.empty()){Data njs_temp_data = this_.top(); this_.push(njs_temp_data);}");
+				code.println("\tif(!_STACK(this_)->empty()){Data njs_temp_data = _STACK(this_)->top(); _STACK(this_)->push(njs_temp_data);}");
 			}
 			else
 			{
-				code.println("\tif(!_STACK("+src+")->empty()){Data njs_temp_data = _STACK("+ src +")->top(); this_.push(njs_temp_data);}");
+				code.println("\tif(!_STACK("+src+")->empty()){Data njs_temp_data = _STACK("+ src +")->top(); _STACK(this_)->push(njs_temp_data);}");
 			}
 		}
 		else
 		{
 			if(src.equals("this_"))
 			{
-				code.println("\tif(!this_.empty()){Data njs_temp_data = this_.top(); _STACK(" + dst + ")->push(njs_temp_data);}");
+				code.println("\tif(!_STACK(this_)->empty()){Data njs_temp_data = _STACK(this_)->top(); _STACK(" + dst + ")->push(njs_temp_data);}");
 			}
 			else
 			{
@@ -324,11 +324,11 @@ options {
 	{		
 		if(name.equals("this_"))
 		{
-			code.println("\tthis_ = stack<Data>();");
+			code.println("\t*_STACK(this_) = Stack();");
 		}
 		else
 		{
-			code.println("\t*_STACK("+ name + ") = stack<Data>();");
+			code.println("\t*_STACK("+ name + ") = Stack();");
 		}
 	}
 	
@@ -338,18 +338,18 @@ options {
 		{
 			if(!src.equals("this_"))
 			{
-				code.println("\tnjs_private_func_deepCopy(*_STACK("+src+"),this_);");
+				code.println("\tnjs_private_func_deepCopy("+src+",this_);");
 			}
 		}
 		else
 		{
 			if(src.equals("this_"))
 			{
-				code.println("\tnjs_private_func_deepCopy(this_ ,*_STACK("+dst+"));");
+				code.println("\tnjs_private_func_deepCopy(this_ ,"+dst+");");
 			}
 			else
 			{
-				code.println("\tnjs_private_func_deepCopy(*_STACK("+src+"),*_STACK("+dst+"));");
+				code.println("\tnjs_private_func_deepCopy("+src+","+dst+");");
 			}
 		}
 				
@@ -365,18 +365,18 @@ options {
 			}
 			else
 			{
-				code.println("\tthis_ = *_STACK(" +src+ ");");
+				code.println("\t*(Stack*)_STACK(this_) = *(Stack*)_STACK(" +src+ ");");
 			}
 		}
 		else
 		{
 			if(src.equals("this_"))
 			{
-				code.println("\t*_STACK("+dst+") = this_;");
+				code.println("\t*(Stack*)_STACK("+dst+") = *(Stack*)_STACK(this_);");
 			}
 			else
 			{
-				code.println("\t*_STACK("+dst+") = *_STACK(" +src+ ");");
+				code.println("\t*(Stack*)_STACK("+dst+") = *(Stack*)_STACK(" +src+ ");");
 			}
 		}
 		
@@ -384,7 +384,7 @@ options {
 	
 	private void createVariableCode(String name)
 	{
-		code.println("\tData " + name + "(new stack<Data>, STACK);");
+		code.println("\tData " + name + "(new Stack, STACK);");
 	}
 }
 
@@ -433,7 +433,7 @@ program:
 	code.println("}");
 	if(isExe)
 	{
-		code.println("int main(int argc, char* argv[]){stack<Data> mainStack; for(int i = 1; i < argc; i++) {Data d(new string(argv[i]), TEXT); mainStack.push(d);}"+ libname + "::njs_sp_main(mainStack);");	
+		code.println("int main(int argc, char* argv[]){Data mainStack(new Stack, STACK); for(int i = 1; i < argc; i++) {Data d(new string(argv[i]), TEXT); _STACK(mainStack)->push(d);}"+ libname + "::njs_sp_main(mainStack);");	
 		code.println("#ifdef _WIN32");
 		code.println("cout << \"Press enter to continue...\" << endl; getchar();");
 		code.println("#endif _WIN32");
@@ -449,7 +449,7 @@ program:
 		{
 			String temp = symbols[i].substring(1);
 			temp = temp.replace(libname+"::", "");
-			headerCode.println(libname + "_NJS_API void njs_sp_"+ temp + "(stack<Data>&);");	
+			headerCode.println(libname + "_NJS_API void njs_sp_"+ temp + "(Data&);");	
 		}	
 	}
 	headerCode.println("}");
@@ -519,7 +519,7 @@ funcdef:
 
 func:
 #(IDENTIFIER {
-	code.println("void njs_sp_" + #IDENTIFIER + "(stack<Data>& this_){");	
+	code.println("void njs_sp_" + #IDENTIFIER + "(Data& this_){");	
 	scope = #IDENTIFIER.getText();	
 } ((eval | pop | push | pop | newstack | clearthis | assign | deepcopy)* | cppcode))
 {
@@ -747,7 +747,7 @@ pop:
 		}
 		else if(x5 != null)//NULL
 		{
-			code.println("\tif(!this_.empty()){this_.pop();}");
+			code.println("\tif(!_STACK(this_)->empty()){_STACK(this_)->pop();}");
 		}
 		else
 		{
@@ -756,9 +756,9 @@ pop:
 				symbolTable.add(x60+"@"+scope);
 				createVariableCode(getLocalStackName(x60));				
 			}
-			code.println("\tif(!this_.empty() && this_.top().type == STACK){");
-			shallowCopyCode(getLocalStackName(x60), "this_.top()");
-			code.println("\tthis_.pop();");
+			code.println("\tif(!_STACK(this_)->empty() && _STACK(this_)->top().type == STACK){");
+			shallowCopyCode(getLocalStackName(x60), "_STACK(this_)->top()");
+			code.println("\t_STACK(this_)->pop();");
 			code.println("\t}");	
 		}		
 	}
@@ -803,7 +803,7 @@ push:
 			{
 				if(symbolTable.contains(x50+"@"+scope))
 				{
-					code.println("\t{Data njs_temp_data(new stack<Data>(*_STACK(" + getLocalStackName(x50) + ")), STACK); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
+					code.println("\t{Data njs_temp_data(new Stack(*(Stack*)_STACK(" + getLocalStackName(x50) + ")), STACK); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 				}
 				else
 				{
@@ -812,7 +812,7 @@ push:
 			}
 			else
 			{
-				code.println("\t{Data njs_temp_data(new stack<Data>(this_), STACK); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
+				code.println("\t{Data njs_temp_data(new Stack(*(Stack*)_STACK(this_)), STACK); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 			}
 		}
 		else if(x6 != null) //SIZE
@@ -830,7 +830,7 @@ push:
 			}
 			else
 			{
-				code.println("\t{Data njs_temp_data(new int, INTEGER); *(int*)njs_temp_data.data = (int)this_.size(); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
+				code.println("\t{Data njs_temp_data(new int, INTEGER); *(int*)njs_temp_data.data = (int)_STACK(this_)->size(); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 			}
 		}
 		else if(x7 != null)//DOUBLE
@@ -896,7 +896,7 @@ push:
 			}
 			else if(symbolTable.contains("@"+libname+"::"+x3)) //FUNCTION
 			{
-				code.println("\t{Data njs_temp_data(&njs_sp_"+ x3 + ",SP); this_.push(njs_temp_data);}");
+				code.println("\t{Data njs_temp_data(&njs_sp_"+ x3 + ",SP); _STACK(this_)->push(njs_temp_data);}");
 			}
 			else
 			{
@@ -913,7 +913,7 @@ push:
 			{
 				if(symbolTable.contains(x50+"@"+scope))
 				{
-					code.println("\t{Data njs_temp_data(new stack<Data>(*_STACK("+getLocalStackName(x50)+")), STACK); this_.push(njs_temp_data);}");
+					code.println("\t{Data njs_temp_data(new Stack(*(Stack*)_STACK("+getLocalStackName(x50)+")), STACK); _STACK(this_)->push(njs_temp_data);}");
 				}
 				else
 				{
@@ -922,7 +922,7 @@ push:
 			}
 			else
 			{
-				code.println("\t{Data njs_temp_data(new stack<Data>(this_), STACK); this_.push(njs_temp_data);}");
+				code.println("\t{Data njs_temp_data(new Stack(*(Stack*)_STACK(this_)), STACK); _STACK(this_)->push(njs_temp_data);}");
 			}
 			
 		}
@@ -932,7 +932,7 @@ push:
 			{
 				if(symbolTable.contains(x60+"@"+scope))
 				{
-					code.println("\t{Data njs_temp_data(new int, INTEGER); *(int*)njs_temp_data.data = (int)_STACK("+ getLocalStackName(x60) + ")->size(); this_.push(njs_temp_data);}");
+					code.println("\t{Data njs_temp_data(new int, INTEGER); *(int*)njs_temp_data.data = (int)_STACK("+ getLocalStackName(x60) + ")->size(); _STACK(this_)->push(njs_temp_data);}");
 				}
 				else
 				{
@@ -941,40 +941,40 @@ push:
 			}
 			else
 			{
-				code.println("\t{Data njs_temp_data(new int, INTEGER); *(int*)njs_temp_data.data = (int)this_.size(); this_.push(njs_temp_data);}");
+				code.println("\t{Data njs_temp_data(new int, INTEGER); *(int*)njs_temp_data.data = (int)_STACK(this_)->size(); _STACK(this_)->push(njs_temp_data);}");
 			}			
 		}
 		else if(x7 != null)//DOUBLE
 		{
-			code.println("\t{Data njs_temp_data(new double, DOUBLE); *(double*)njs_temp_data.data = " + x7 + "; this_.push(njs_temp_data);}");
+			code.println("\t{Data njs_temp_data(new double, DOUBLE); *(double*)njs_temp_data.data = " + x7 + "; _STACK(this_)->push(njs_temp_data);}");
 		}
 		else if(x8 != null)//TEXT
 		{
-			code.println("\t{Data njs_temp_data(new string, TEXT); *(string*)njs_temp_data.data = " + x8 + "; this_.push(njs_temp_data);}");
+			code.println("\t{Data njs_temp_data(new string, TEXT); *(string*)njs_temp_data.data = " + x8 + "; _STACK(this_)->push(njs_temp_data);}");
 		}
 		else if(x9 != null)
 		{
-			code.println("\t{Data njs_temp_data(new int, INTEGER); *(int*)njs_temp_data.data = " + x9 + "; this_.push(njs_temp_data);}");
+			code.println("\t{Data njs_temp_data(new int, INTEGER); *(int*)njs_temp_data.data = " + x9 + "; _STACK(this_)->push(njs_temp_data);}");
 		}
 		else if(x10 != null)//IF
 		{
-			code.println("\t{Data njs_temp_data(NULL, IF); this_.push(njs_temp_data);}");
+			code.println("\t{Data njs_temp_data(NULL, IF); _STACK(this_)->push(njs_temp_data);}");
 		}
 		else if(x11 != null)
 		{
-			code.println("\t{Data njs_temp_data(NULL, THEN); this_.push(njs_temp_data);}");
+			code.println("\t{Data njs_temp_data(NULL, THEN); _STACK(this_)->push(njs_temp_data);}");
 		}
 		else if(x12 != null)
 		{
-			code.println("\t{Data njs_temp_data(NULL, ELSE); this_.push(njs_temp_data);}");
+			code.println("\t{Data njs_temp_data(NULL, ELSE); _STACK(this_)->push(njs_temp_data);}");
 		}
 		else if(x13 != null)
 		{
-			code.println("\t{Data njs_temp_data(NULL, RETURN); this_.push(njs_temp_data);}");
+			code.println("\t{Data njs_temp_data(NULL, RETURN); _STACK(this_)->push(njs_temp_data);}");
 		}
 		else if(x14 != null)
 		{
-			code.println("\t{Data njs_temp_data(NULL, TYPEOF); this_.push(njs_temp_data);}");
+			code.println("\t{Data njs_temp_data(NULL, TYPEOF); _STACK(this_)->push(njs_temp_data);}");
 		}
 		else
 		{
@@ -984,7 +984,7 @@ push:
 				String ns = namespaceMap.get(parts[0]);
 				if(symbolTable.contains("@"+ns+"::"+parts[1])) //FUNCTION
 				{
-					code.println("\t{Data njs_temp_data(&" + ns +"::njs_sp_"+ parts[1] + ",SP); this_.push(njs_temp_data);}");
+					code.println("\t{Data njs_temp_data(&" + ns +"::njs_sp_"+ parts[1] + ",SP); _STACK(this_)->push(njs_temp_data);}");
 				}
 				else
 				{

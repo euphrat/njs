@@ -1,8 +1,8 @@
 sp print_int
 ??
-	if(!this_.empty() && this_.top().type == INTEGER)
+	if(!_STACK(this_)->empty() && _STACK(this_)->top().type == INTEGER)
 	{
-		cout << *(int*)this_.top().data;	
+		cout << *(int*)_STACK(this_)->top().data;	
 	}
 	else
 	{
@@ -13,9 +13,9 @@ end
 
 sp println_int
 ??
-	if(!this_.empty() && this_.top().type == INTEGER)
+	if(!_STACK(this_)->empty() && _STACK(this_)->top().type == INTEGER)
 	{
-		cout << *(int*)this_.top().data << endl;	
+		cout << *(int*)_STACK(this_)->top().data << endl;	
 	}
 	else
 	{
@@ -26,9 +26,9 @@ end
 
 sp print_double
 ??
-	if(!this_.empty() && this_.top().type == DOUBLE)
+	if(!_STACK(this_)->empty() && _STACK(this_)->top().type == DOUBLE)
 	{
-		cout << *(double*)this_.top().data;	
+		cout << *(double*)_STACK(this_)->top().data;	
 	}
 	else
 	{
@@ -39,9 +39,9 @@ end
 
 sp println_double
 ??
-	if(!this_.empty() && this_.top().type == DOUBLE)
+	if(!_STACK(this_)->empty() && _STACK(this_)->top().type == DOUBLE)
 	{
-		cout << *(double*)this_.top().data << endl;	
+		cout << *(double*)_STACK(this_)->top().data << endl;	
 	}
 	else
 	{
@@ -52,9 +52,9 @@ end
 
 sp print_text
 ??
-	if(!this_.empty() && this_.top().type == TEXT)
+	if(!_STACK(this_)->empty() && _STACK(this_)->top().type == TEXT)
 	{
-		cout << *(string*)this_.top().data;	
+		cout << *(string*)_STACK(this_)->top().data;	
 	}
 	else
 	{
@@ -65,9 +65,9 @@ end
 
 sp println_text
 ??
-	if(!this_.empty() && this_.top().type == TEXT)
+	if(!_STACK(this_)->empty() && _STACK(this_)->top().type == TEXT)
 	{
-		cout << *(string*)this_.top().data << endl;	
+		cout << *(string*)_STACK(this_)->top().data << endl;	
 	}
 	else
 	{
@@ -82,10 +82,10 @@ end
 
 sp print_pop_int
 ??
-	if(!this_.empty() && this_.top().type == INTEGER)
+	if(!_STACK(this_)->empty() && _STACK(this_)->top().type == INTEGER)
 	{
-		cout << *(int*)this_.top().data;
-		this_.pop();	
+		cout << *(int*)_STACK(this_)->top().data;
+		_STACK(this_)->pop();	
 	}
 	else
 	{
@@ -96,10 +96,10 @@ end
 
 sp println_pop_int
 ??
-	if(!this_.empty() && this_.top().type == INTEGER)
+	if(!_STACK(this_)->empty() && _STACK(this_)->top().type == INTEGER)
 	{
-		cout << *(int*)this_.top().data << endl;
-		this_.pop();	
+		cout << *(int*)_STACK(this_)->top().data << endl;
+		_STACK(this_)->pop();	
 	}
 	else
 	{
@@ -110,10 +110,10 @@ end
 
 sp print_pop_double
 ??
-	if(!this_.empty() && this_.top().type == DOUBLE)
+	if(!_STACK(this_)->empty() && _STACK(this_)->top().type == DOUBLE)
 	{
-		cout << *(double*)this_.top().data;
-		this_.pop();	
+		cout << *(double*)_STACK(this_)->top().data;
+		_STACK(this_)->pop();	
 	}
 	else
 	{
@@ -124,10 +124,10 @@ end
 
 sp println_pop_double
 ??
-	if(!this_.empty() && this_.top().type == DOUBLE)
+	if(!_STACK(this_)->empty() && _STACK(this_)->top().type == DOUBLE)
 	{
-		cout << *(double*)this_.top().data << endl;
-		this_.pop();	
+		cout << *(double*)_STACK(this_)->top().data << endl;
+		_STACK(this_)->pop();	
 	}
 	else
 	{
@@ -138,10 +138,10 @@ end
 
 sp print_pop_text
 ??
-	if(!this_.empty() && this_.top().type == TEXT)
+	if(!_STACK(this_)->empty() && _STACK(this_)->top().type == TEXT)
 	{
-		cout << *(string*)this_.top().data;
-		this_.pop();	
+		cout << *(string*)_STACK(this_)->top().data;
+		_STACK(this_)->pop();	
 	}
 	else
 	{
@@ -152,10 +152,10 @@ end
 
 sp println_pop_text
 ??
-	if(!this_.empty() && this_.top().type == TEXT)
+	if(!_STACK(this_)->empty() && _STACK(this_)->top().type == TEXT)
 	{
-		cout << *(string*)this_.top().data << endl;
-		this_.pop();	
+		cout << *(string*)_STACK(this_)->top().data << endl;
+		_STACK(this_)->pop();	
 	}
 	else
 	{
@@ -166,8 +166,8 @@ end
 
 sp println_pop
 ??
-	while(!this_.empty()){
-		Data A = this_.top();
+	while(!_STACK(this_)->empty()){
+		Data A = _STACK(this_)->top();
 		switch(A.type)
 		{
 			case DOUBLE:
@@ -189,15 +189,15 @@ sp println_pop
 				cout << "STACK [" << temp.size() << "]" << endl;			
 				break;			
 		}
-		this_.pop();
+		_STACK(this_)->pop();
 	}
 ??
 end
 
 sp print_pop
 ??
-	while(!this_.empty()){
-		Data A = this_.top();
+	while(!_STACK(this_)->empty()){
+		Data A = _STACK(this_)->top();
 		switch(A.type)
 		{
 			case DOUBLE:
@@ -221,7 +221,7 @@ sp print_pop
 				cout << "STACK [" << temp.size() << "]" << " ";			
 				break;			
 		}
-		this_.pop();
+		_STACK(this_)->pop();
 	}
 ??
 end
