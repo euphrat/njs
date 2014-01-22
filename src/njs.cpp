@@ -70,6 +70,10 @@ size_t Stack::size()
 {
 	return stack_.size();
 }
+void Stack::operator=(const Data& that)
+{
+	*this = *(Stack*)_STACK(that);
+}
 
 void njs_private_func_if_helper(Data& this_, int njs_temp_bool)
 {

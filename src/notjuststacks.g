@@ -365,18 +365,18 @@ options {
 			}
 			else
 			{
-				code.println("\t*(Stack*)_STACK(this_) = *(Stack*)_STACK(" +src+ ");");
+				code.println("\t_STACK(this_)->operator=(" +src+ ");");
 			}
 		}
 		else
 		{
 			if(src.equals("this_"))
 			{
-				code.println("\t*(Stack*)_STACK("+dst+") = *(Stack*)_STACK(this_);");
+				code.println("\t_STACK("+dst+")->operator=(this_);");
 			}
 			else
 			{
-				code.println("\t*(Stack*)_STACK("+dst+") = *(Stack*)_STACK(" +src+ ");");
+				code.println("\t_STACK("+dst+")->operator=(" +src+ ");");
 			}
 		}
 		

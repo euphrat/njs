@@ -47,6 +47,7 @@ public:
 	virtual Data& top() = 0;
 	virtual bool empty() = 0;
 	virtual size_t size() = 0;
+	virtual void operator=(const Data& that) = 0;
 };
 
 class NJS_MAIN_LIB_NJS_API Stack : public StackInterface
@@ -58,6 +59,7 @@ public:
 	virtual Data& top();
 	virtual bool empty();
 	virtual size_t size();
+	virtual void operator=(const Data& that);
 private:
 	stack<Data> stack_;
 };
