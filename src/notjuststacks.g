@@ -118,14 +118,15 @@ function_list: (funcdef: function_definition)+
 
 function_definition: (FUNC! x:IDENTIFIER^
 {
-	String functionEntry = "@"+NotJustStacksWalker.libname+"::"+x.getText();
-	if(NotJustStacksWalker.symbolTable.contains(functionEntry))
+	//String functionEntry = "@"+NotJustStacksWalker.libname+"::"+x.getText();
+	NotJustStacksWalker.Symbol functionEntry = new NotJustStacksWalker.Symbol("", "sp", NotJustStacksWalker.libname, x.getText());
+	if(NotJustStacksWalker.symbolTable.containsKey(functionEntry.toString()))
 	{
 		System.err.println("ERROR: Stack processor \""+ x.getText() + "\" has already been defined.");
 	}
 	else
 	{
-		NotJustStacksWalker.symbolTable.add(functionEntry);
+		NotJustStacksWalker.symbolTable.put(functionEntry.toString(), functionEntry);
 	}
 } 
 ((statement SEMI!)* | (cppinclude)* CPPCODE)  END!)
@@ -197,6 +198,7 @@ import java.io.FileReader;
 import java.io.BufferedReader;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.NavigableSet;
 }
 
 class NotJustStacksWalker extends TreeParser;
@@ -208,11 +210,38 @@ options {
 }
 
 {	
+	static class Symbol
+	{
+		public String scope;
+		public String type;
+		public String namespace;
+		public String name;
+		
+		public Symbol(String scope, String type, String namespace, String name)
+		{
+			this.scope = scope;
+			this.type = type;
+			this.namespace = namespace;
+			this.name = name;
+		}
+		
+		public String toString()
+		{
+			String ns = namespace;
+			if(!namespace.equals(""))
+			{
+				ns += "::";
+			}
+			return scope+"@"+ns+name;
+		}	
+	}
+	
+	
 	public static PrintWriter code = null;
 	public static PrintWriter headerCode = null;
 	public static PrintWriter linkInfo = null;
 	private String scope = null;
-	public static ConcurrentSkipListSet<String> symbolTable = new ConcurrentSkipListSet<String>();
+	public static ConcurrentSkipListMap<String,Symbol> symbolTable = new ConcurrentSkipListMap<String,Symbol>();
 	public static boolean isExe = true;
 	public static String libname = "EXE";
 	private static ConcurrentSkipListMap<String,String> namespaceMap = new ConcurrentSkipListMap<String,String>();
@@ -231,14 +260,15 @@ options {
 			   if(line.substring(0,2).equals("//"))
 			   {
 			   		String functionName = line.substring(2,line.length());
-			   		String functionEntry = "@"+functionName;
-			   		if(symbolTable.contains(functionEntry))
+			   		//String functionEntry = "@"+functionName;
+			   		Symbol functionEntry = new Symbol("", "sp", "", functionName);
+			   		if(symbolTable.containsKey(functionEntry.toString()))
 			   		{
 			   			System.err.println("ERROR: Stack processor \""+ functionName + "\" has already been defined.");
 			   		}
 			   		else
 			   		{
-			   			symbolTable.add(functionEntry);
+			   			symbolTable.put(functionEntry.toString(), functionEntry);
 			   		}
 			   }
 			   else
@@ -392,7 +422,9 @@ program:
 {
 	if(!isExe)
 	{
-		String[] symbols = symbolTable.toArray(new String[0]);
+		//String[] symbols = symbolTable.toArray(new String[0]);
+		NavigableSet<String> navSet = symbolTable.navigableKeySet();
+		String[] symbols = navSet.toArray(new String[0]);
 		for(int i = 0; i < symbols.length; i++)
 		{
 			if(symbols[i].substring(0,1).equals("@"))
@@ -442,7 +474,8 @@ program:
 	
 		
 	
-	String[] symbols = symbolTable.toArray(new String[0]);
+	NavigableSet<String> navSet = symbolTable.navigableKeySet();
+	String[] symbols = navSet.toArray(new String[0]);
 	for(int i = 0; i < symbols.length; i++)
 	{		
 		if(symbols[i].startsWith("@"+libname+"::"))
@@ -531,9 +564,10 @@ func:
 newstack:
 x:IDENTIFIER
 {
-	if(!symbolTable.contains(x+"@"+scope))
+	Symbol s = new Symbol(scope, "Stack", libname, x.getText());
+	if(!symbolTable.containsKey(s.toString()))
 	{
-		symbolTable.add(x+"@"+scope);
+		symbolTable.put(s.toString(), s);
 		createVariableCode(getLocalStackName(x));		
 	}
 	else
@@ -572,15 +606,17 @@ assign:
 #(ASSIGN (x1:IDENTIFIER | x2:THIS) (x3:IDENTIFIER | x4:THIS))
 {
 	if(x1 != null)
-	{		
-		if(!symbolTable.contains(x1+"@"+scope))
+	{	
+		Symbol s1 = new Symbol(scope, "Stack", libname, x1.getText());	
+		if(!symbolTable.containsKey(s1.toString()))
 		{
-			symbolTable.add(x1+"@"+scope);
+			symbolTable.put(s1.toString(), s1);
 			createVariableCode(getLocalStackName(x1));			
 		}		
 		if(x3 != null)
 		{
-			if(symbolTable.contains(x3+"@"+scope))
+			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
+			if(symbolTable.containsKey(s3.toString()))
 			{
 				if(!x1.getText().equals(x3.getText()))
 				{								
@@ -601,7 +637,8 @@ assign:
 	{		
 		if(x3 != null)
 		{
-			if(symbolTable.contains(x3+"@"+scope))
+			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
+			if(symbolTable.containsKey(s3.toString()))
 			{								
 				shallowCopyCode("this_", getLocalStackName(x3));
 			}			
@@ -618,16 +655,18 @@ deepcopy:
 {
 	if(x1 != null)
 	{
-		boolean exists = true;		
-		if(!symbolTable.contains(x1+"@"+scope))
+		boolean exists = true;	
+		Symbol s1 = new Symbol(scope, "Stack", libname, x1.getText());	
+		if(!symbolTable.containsKey(s1.toString()))
 		{
-			symbolTable.add(x1+"@"+scope);
+			symbolTable.put(s1.toString(), s1);
 			createVariableCode(getLocalStackName(x1));	
 			exists = false;		
 		}		
 		if(x3 != null)
 		{
-			if(symbolTable.contains(x3+"@"+scope))
+			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
+			if(symbolTable.containsKey(s3.toString()))
 			{								
 				if(!x1.getText().equals(x3.getText()))
 				{
@@ -656,7 +695,8 @@ deepcopy:
 	{		
 		if(x3 != null)
 		{
-			if(symbolTable.contains(x3+"@"+scope))
+			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
+			if(symbolTable.containsKey(s3.toString()))
 			{								
 				deepCopyCode("this_", getLocalStackName(x3));
 			}			
@@ -673,7 +713,8 @@ eval:
 {
 	if(x1 != null)
 	{
-		if(symbolTable.contains(x1+"@"+scope))
+		Symbol s1 = new Symbol(scope, "Stack", libname, x1.getText());
+		if(symbolTable.containsKey(s1.toString()))
 		{
 			evalCode(getLocalStackName(x1));			
 		}
@@ -693,13 +734,15 @@ pop:
 {
 	if(x1 != null) //IDENTIFIER
 	{
-		if(symbolTable.contains(x1+"@"+scope))
+		Symbol s1 = new Symbol(scope, "Stack", libname, x1.getText());
+		if(symbolTable.containsKey(s1.toString()))
 		{
 			if(x3 != null) // IDENTIFIER
 			{
-				if(!symbolTable.contains(x3+"@"+scope))
+				Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
+				if(!symbolTable.containsKey(s3.toString()))
 				{
-					symbolTable.add(x3+"@"+scope);
+					symbolTable.put(s3.toString(), s3);
 					createVariableCode(getLocalStackName(x3));					
 				}
 				popCode(getLocalStackName(x1), getLocalStackName(x3));				
@@ -714,9 +757,10 @@ pop:
 			}
 			else
 			{
-				if(!symbolTable.contains(x60+"@"+scope))
+				Symbol s60 = new Symbol(scope, "Stack", libname, x60.getText());
+				if(!symbolTable.containsKey(s60.toString()))
 				{
-					symbolTable.add(x60+"@"+scope);
+					symbolTable.put(s60.toString(), s60);
 					createVariableCode(getLocalStackName(x60));					
 				}
 				code.println("\tif(!_STACK("+ getLocalStackName(x1) + ")->empty() && _STACK("+ getLocalStackName(x1) + ")->top().type == STACK){");
@@ -734,9 +778,10 @@ pop:
 	{
 		if(x3 != null) // IDENTIFIER
 		{
-			if(!symbolTable.contains(x3+"@"+scope))
+			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
+			if(!symbolTable.containsKey(s3.toString()))
 			{
-				symbolTable.add(x3+"@"+scope);
+				symbolTable.put(s3.toString(), s3);
 				createVariableCode(getLocalStackName(x3));				
 			}
 			popCode("this_", getLocalStackName(x3));			
@@ -751,9 +796,10 @@ pop:
 		}
 		else
 		{
-			if(!symbolTable.contains(x60+"@"+scope))
+			Symbol s60 = new Symbol(scope, "Stack", libname, x60.getText());
+			if(!symbolTable.containsKey(s60.toString()))
 			{
-				symbolTable.add(x60+"@"+scope);
+				symbolTable.put(s60.toString(), s60);
 				createVariableCode(getLocalStackName(x60));				
 			}
 			code.println("\tif(!_STACK(this_)->empty() && _STACK(this_)->top().type == STACK){");
@@ -773,18 +819,21 @@ push:
 {
 	if(x1 != null) //IDENTIFIER
 	{
-		if(!symbolTable.contains(x1+"@"+scope))
+		Symbol s1 = new Symbol(scope, "Stack", libname, x1.getText());
+		if(!symbolTable.containsKey(s1.toString()))
 		{
-			symbolTable.add(x1+"@"+scope);			
+			symbolTable.put(s1.toString(), s1);			
 			createVariableCode(getLocalStackName(x1));
 		}
 		if(x3 != null) //IDENTIFIER
 		{
-			if(symbolTable.contains(x3+"@"+scope))
+			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
+			Symbol s3_2 = new Symbol("", "sp", libname, x3.getText());
+			if(symbolTable.containsKey(s3.toString()))
 			{					
 				pushCode(getLocalStackName(x1), getLocalStackName(x3));
 			}
-			else if(symbolTable.contains("@"+libname+"::"+x3)) //FUNCTION
+			else if(symbolTable.containsKey(s3_2.toString())) //FUNCTION
 			{
 				code.println("\t{Data njs_temp_data(&njs_sp_"+ x3 + ",SP); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 			}
@@ -801,7 +850,8 @@ push:
 		{
 			if(x50 != null)
 			{
-				if(symbolTable.contains(x50+"@"+scope))
+				Symbol s50 = new Symbol(scope, "Stack", libname, x50.getText());
+				if(symbolTable.containsKey(s50.toString()))
 				{
 					code.println("\t{Data njs_temp_data(new Stack(*(Stack*)_STACK(" + getLocalStackName(x50) + ")), STACK); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 				}
@@ -819,7 +869,8 @@ push:
 		{
 			if(x60 != null)
 			{
-				if(symbolTable.contains(x60+"@"+scope))
+				Symbol s60 = new Symbol(scope, "Stack", libname, x60.getText());
+				if(symbolTable.containsKey(s60.toString()))
 				{
 					code.println("\t{Data njs_temp_data(new int, INTEGER); *(int*)njs_temp_data.data = (int)_STACK("+ getLocalStackName(x60) + ")->size(); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 				}
@@ -871,7 +922,8 @@ push:
 			if(namespaceMap.containsKey(parts[0]))
 			{
 				String ns = namespaceMap.get(parts[0]);
-				if(symbolTable.contains("@"+ns+"::"+parts[1])) //FUNCTION
+				Symbol s3 = new Symbol("", "sp", ns, parts[1]);
+				if(symbolTable.containsKey(s3.toString())) //FUNCTION
 				{
 					code.println("\t{Data njs_temp_data(&" + ns +"::njs_sp_"+ parts[1] + ",SP); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 				}
@@ -890,11 +942,13 @@ push:
 	{
 		if(x3 != null) //IDENTIFIER
 		{
-			if(symbolTable.contains(x3+"@"+scope))
+			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
+			Symbol s3_2 = new Symbol("", "sp", libname, x3.getText());
+			if(symbolTable.containsKey(s3.toString()))
 			{	
 				pushCode("this_", getLocalStackName(x3));				
 			}
-			else if(symbolTable.contains("@"+libname+"::"+x3)) //FUNCTION
+			else if(symbolTable.containsKey(s3_2.toString())) //FUNCTION
 			{
 				code.println("\t{Data njs_temp_data(&njs_sp_"+ x3 + ",SP); _STACK(this_)->push(njs_temp_data);}");
 			}
@@ -911,7 +965,8 @@ push:
 		{
 			if(x50 != null)
 			{
-				if(symbolTable.contains(x50+"@"+scope))
+				Symbol s50 = new Symbol(scope, "Stack", libname, x50.getText());			
+				if(symbolTable.containsKey(s50.toString()))
 				{
 					code.println("\t{Data njs_temp_data(new Stack(*(Stack*)_STACK("+getLocalStackName(x50)+")), STACK); _STACK(this_)->push(njs_temp_data);}");
 				}
@@ -930,7 +985,8 @@ push:
 		{
 			if(x60 != null)
 			{
-				if(symbolTable.contains(x60+"@"+scope))
+				Symbol s60 = new Symbol(scope, "Stack", libname, x60.getText());			
+				if(symbolTable.containsKey(s60.toString()))
 				{
 					code.println("\t{Data njs_temp_data(new int, INTEGER); *(int*)njs_temp_data.data = (int)_STACK("+ getLocalStackName(x60) + ")->size(); _STACK(this_)->push(njs_temp_data);}");
 				}
@@ -982,7 +1038,8 @@ push:
 			if(namespaceMap.containsKey(parts[0]))
 			{
 				String ns = namespaceMap.get(parts[0]);
-				if(symbolTable.contains("@"+ns+"::"+parts[1])) //FUNCTION
+				Symbol s3 = new Symbol("", "sp", ns, parts[1]);
+				if(symbolTable.containsKey(s3.toString())) //FUNCTION
 				{
 					code.println("\t{Data njs_temp_data(&" + ns +"::njs_sp_"+ parts[1] + ",SP); _STACK(this_)->push(njs_temp_data);}");
 				}
