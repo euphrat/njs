@@ -1,5 +1,3 @@
-//TODO:
-
 class NotJustStacksLexer extends Lexer;
 
 options {
@@ -19,10 +17,15 @@ tokens {
 	NULL = "null";
 	RETURN = "return";
 	TYPEOF = "typeof";
+	SPECIALSTACK = "ss";
 	PROGRAM;	
 	INCLUDE_LIST;
 	FUNCTION_LIST;
+	SS_LIST;
 	FUNCTION_DEFINITION;
+	MEMBER_FUNCTION_LIST;
+	MEMBER_FUNCTION_DEFINITION;
+	SS_DEFINITION;
 	STATEMENT;
 	CPPINCLUDE;	
 }
@@ -99,7 +102,7 @@ options {
 	
 }
 
-program: (inc:include_list)(funcs:function_list)
+program: (include_list)(function_list)//(ss_list)
 {
 	#program = #([PROGRAM,"PROGRAM"],#program);
 };
@@ -111,15 +114,14 @@ include_list: (include_item)*
 
 include_item: (INCLUDE^ TEXT (AT! TEXT)? (COL! IDENTIFIER));
 
-function_list: (funcdef: function_definition)+
+function_list: (function_definition)*
 {
 	#function_list = #([FUNCTION_LIST,"FUNCTION_LIST"],#function_list);
 };
 
 function_definition: (FUNC! x:IDENTIFIER^
-{
-	//String functionEntry = "@"+NotJustStacksWalker.libname+"::"+x.getText();
-	NotJustStacksWalker.Symbol functionEntry = new NotJustStacksWalker.Symbol("", "sp", NotJustStacksWalker.libname, x.getText());
+{	
+	NotJustStacksWalker.Symbol functionEntry = new NotJustStacksWalker.Symbol("sp", "sp", NotJustStacksWalker.libname, x.getText());
 	if(NotJustStacksWalker.symbolTable.containsKey(functionEntry.toString()))
 	{
 		System.err.println("ERROR: Stack processor \""+ x.getText() + "\" has already been defined.");
@@ -134,6 +136,32 @@ function_definition: (FUNC! x:IDENTIFIER^
 	#function_definition = #([FUNCTION_DEFINITION,"FUNCTION_DEFINITION"],#function_definition);	
 };
 
+/*ss_list: (ss_definition)*
+{
+	#ss_list = #([SS_LIST,"SS_LIST"],#ss_list);
+};
+
+ss_definition: (SPECIALSTACK! x:IDENTIFIER^
+{	
+	NotJustStacksWalker.Symbol ssEntry = new NotJustStacksWalker.Symbol("ss", "ss", NotJustStacksWalker.libname, x.getText());
+	if(NotJustStacksWalker.symbolTable.containsKey(ssEntry.toString()))
+	{
+		System.err.println("ERROR: Specialized stack type \""+ x.getText() + "\" has already been defined.");
+	}
+	else
+	{
+		NotJustStacksWalker.symbolTable.put(ssEntry.toString(), ssEntry);
+	}
+} 
+(member_variable_list)(member_func_list)  END!)
+{
+	#ss_definition = #([SS_DEFINITION,"SS_DEFINITION"],#ss_definition);	
+};
+
+member_func_list: (member_func_definition)*
+{
+	#member_func_list = #([MEMBER_FUNCTION_LIST,"MEMBER_FUNCTION_LIST"],#member_func_list);
+};*/
 
 cppinclude:
 (
@@ -259,9 +287,8 @@ options {
 			while ((line = br.readLine()) != null) {
 			   if(line.substring(0,2).equals("//"))
 			   {
-			   		String functionName = line.substring(2,line.length());
-			   		//String functionEntry = "@"+functionName;
-			   		Symbol functionEntry = new Symbol("", "sp", "", functionName);
+			   		String functionName = line.substring(2,line.length());			   		
+			   		Symbol functionEntry = new Symbol("sp", "sp", "", functionName);			   		
 			   		if(symbolTable.containsKey(functionEntry.toString()))
 			   		{
 			   			System.err.println("ERROR: Stack processor \""+ functionName + "\" has already been defined.");
@@ -421,15 +448,14 @@ options {
 program:
 {
 	if(!isExe)
-	{
-		//String[] symbols = symbolTable.toArray(new String[0]);
+	{		
 		NavigableSet<String> navSet = symbolTable.navigableKeySet();
 		String[] symbols = navSet.toArray(new String[0]);
 		for(int i = 0; i < symbols.length; i++)
 		{
-			if(symbols[i].substring(0,1).equals("@"))
+			if(symbols[i].startsWith("sp@"))
 			{
-				headerCode.println("//"+ symbols[i].substring(1));	
+				headerCode.println("//"+ symbols[i].substring(3));	
 			}	
 		}
 	}
@@ -478,10 +504,9 @@ program:
 	String[] symbols = navSet.toArray(new String[0]);
 	for(int i = 0; i < symbols.length; i++)
 	{		
-		if(symbols[i].startsWith("@"+libname+"::"))
-		{
-			String temp = symbols[i].substring(1);
-			temp = temp.replace(libname+"::", "");
+		if(symbols[i].startsWith("sp@"+libname+"::"))
+		{			
+			String temp = symbols[i].replace("sp@"+libname+"::", "");
 			headerCode.println(libname + "_NJS_API void njs_sp_"+ temp + "(Data&);");	
 		}	
 	}
@@ -828,7 +853,7 @@ push:
 		if(x3 != null) //IDENTIFIER
 		{
 			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
-			Symbol s3_2 = new Symbol("", "sp", libname, x3.getText());
+			Symbol s3_2 = new Symbol("sp", "sp", libname, x3.getText());
 			if(symbolTable.containsKey(s3.toString()))
 			{					
 				pushCode(getLocalStackName(x1), getLocalStackName(x3));
@@ -922,14 +947,14 @@ push:
 			if(namespaceMap.containsKey(parts[0]))
 			{
 				String ns = namespaceMap.get(parts[0]);
-				Symbol s3 = new Symbol("", "sp", ns, parts[1]);
+				Symbol s3 = new Symbol("sp", "sp", ns, parts[1]);
 				if(symbolTable.containsKey(s3.toString())) //FUNCTION
 				{
 					code.println("\t{Data njs_temp_data(&" + ns +"::njs_sp_"+ parts[1] + ",SP); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
 				}
 				else
 				{
-					System.err.println("ERROR: Stack processor \""+ x14 + "\" is not defined.");
+					System.err.println("ERROR: Stack processor \""+ x15 + "\" is not defined.");
 				}
 			}
 			else
@@ -943,7 +968,7 @@ push:
 		if(x3 != null) //IDENTIFIER
 		{
 			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
-			Symbol s3_2 = new Symbol("", "sp", libname, x3.getText());
+			Symbol s3_2 = new Symbol("sp", "sp", libname, x3.getText());
 			if(symbolTable.containsKey(s3.toString()))
 			{	
 				pushCode("this_", getLocalStackName(x3));				
@@ -1038,14 +1063,14 @@ push:
 			if(namespaceMap.containsKey(parts[0]))
 			{
 				String ns = namespaceMap.get(parts[0]);
-				Symbol s3 = new Symbol("", "sp", ns, parts[1]);
+				Symbol s3 = new Symbol("sp", "sp", ns, parts[1]);
 				if(symbolTable.containsKey(s3.toString())) //FUNCTION
 				{
 					code.println("\t{Data njs_temp_data(&" + ns +"::njs_sp_"+ parts[1] + ",SP); _STACK(this_)->push(njs_temp_data);}");
 				}
 				else
 				{
-					System.err.println("ERROR: Stack processor \""+ x14 + "\" is not defined.");
+					System.err.println("ERROR: Stack processor \""+ x15 + "\" is not defined.");
 				}
 			}
 			else

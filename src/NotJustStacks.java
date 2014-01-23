@@ -53,7 +53,7 @@ public class NotJustStacks {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		NotJustStacksWalker.Symbol s = new NotJustStacksWalker.Symbol("", "sp", NotJustStacksWalker.libname, "main");
+		NotJustStacksWalker.Symbol s = new NotJustStacksWalker.Symbol("sp", "sp", NotJustStacksWalker.libname, "main");
 		if(NotJustStacksWalker.isExe && !NotJustStacksWalker.symbolTable.containsKey(s.toString()))
 		{
 			System.err.println("ERROR: Stack processor \"main\" is missing.");
