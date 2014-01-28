@@ -14,17 +14,20 @@ tokens {
 	ELSE = "else";			
 	INCLUDE = "include";
 	THIS = "this";
+	THAT = "that";
+	IT = "it";
 	NULL = "null";
 	RETURN = "return";
 	TYPEOF = "typeof";
 	SPECIALSTACK = "ss";
-	PROGRAM;	
-	INCLUDE_LIST;
-	FUNCTION_LIST;
-	SS_LIST;
+	OPERATOR = "op";
+	PROGRAM;
+	DEFINITION_LIST;	
+	INCLUDE_LIST;	
 	FUNCTION_DEFINITION;
 	MEMBER_FUNCTION_LIST;
 	MEMBER_FUNCTION_DEFINITION;
+	MEMBER_VAR_LIST;
 	SS_DEFINITION;
 	STATEMENT;
 	CPPINCLUDE;	
@@ -102,7 +105,7 @@ options {
 	
 }
 
-program: (include_list)(function_list)//(ss_list)
+program: (include_list)(definition_list)
 {
 	#program = #([PROGRAM,"PROGRAM"],#program);
 };
@@ -114,9 +117,9 @@ include_list: (include_item)*
 
 include_item: (INCLUDE^ TEXT (AT! TEXT)? (COL! IDENTIFIER));
 
-function_list: (function_definition)*
+definition_list: (function_definition | ss_definition)*
 {
-	#function_list = #([FUNCTION_LIST,"FUNCTION_LIST"],#function_list);
+	#definition_list = #([DEFINITION_LIST,"DEFINITION_LIST"],#definition_list);
 };
 
 function_definition: (FUNC! x:IDENTIFIER^
@@ -136,14 +139,9 @@ function_definition: (FUNC! x:IDENTIFIER^
 	#function_definition = #([FUNCTION_DEFINITION,"FUNCTION_DEFINITION"],#function_definition);	
 };
 
-/*ss_list: (ss_definition)*
-{
-	#ss_list = #([SS_LIST,"SS_LIST"],#ss_list);
-};
-
 ss_definition: (SPECIALSTACK! x:IDENTIFIER^
 {	
-	NotJustStacksWalker.Symbol ssEntry = new NotJustStacksWalker.Symbol("ss", "ss", NotJustStacksWalker.libname, x.getText());
+	NotJustStacksWalker.Symbol ssEntry = new NotJustStacksWalker.Symbol("", "ss", "", NotJustStacksWalker.libname, x.getText());
 	if(NotJustStacksWalker.symbolTable.containsKey(ssEntry.toString()))
 	{
 		System.err.println("ERROR: Specialized stack type \""+ x.getText() + "\" has already been defined.");
@@ -158,10 +156,27 @@ ss_definition: (SPECIALSTACK! x:IDENTIFIER^
 	#ss_definition = #([SS_DEFINITION,"SS_DEFINITION"],#ss_definition);	
 };
 
-member_func_list: (member_func_definition)*
+member_variable_list: (newstack SEMI!)*
+{
+	#member_variable_list = #([MEMBER_VAR_LIST,"MEMBER_VAR_LIST"],#member_variable_list);
+};
+
+member_func_list: ((push_func_definition)? (pop_func_definition)? (size_func_definition)?)
 {
 	#member_func_list = #([MEMBER_FUNCTION_LIST,"MEMBER_FUNCTION_LIST"],#member_func_list);
-};*/
+};
+
+push_func_definition: (
+OPERATOR! PUSH^  ((statement_push SEMI!)* | (cppinclude)* CPPCODE)  END!
+);
+
+pop_func_definition: (
+OPERATOR! POP^  ((statement_pop SEMI!)* | (cppinclude)* CPPCODE)  END!
+);
+
+size_func_definition: (
+OPERATOR! SIZE^  ((statement SEMI!)* | (cppinclude)* CPPCODE)  END!
+);
 
 cppinclude:
 (
@@ -178,10 +193,102 @@ popleft POP^ (popright)+ |
 pushleft PUSH^ (pushright)+ |
 assignleft ASSIGN^ assignright |
 assignleft COPY^ assignright |
-IDENTIFIER |
-THIS
+newstack
+);
+/////////////////////////////////////
+//"this" N/A, "it"
+statement_push: 
+(
+EVAL^ evalarg_push |
+popleft_push POP^ (popright_push)+ |
+pushleft_push PUSH^ (pushright_push)+ |
+assignleft_push ASSIGN^ assignright_push |
+assignleft_push COPY^ assignright_push |
+newstack
 );
 
+evalarg_push:
+(
+	IDENTIFIER
+);
+
+popleft_push:
+(
+	evalarg_push
+);
+
+popright_push:
+(
+	(REF^)? IDENTIFIER | NULL
+);
+
+pushleft_push:
+(
+	evalarg_push
+);
+
+pushright_push:
+(
+	(REF^ | SIZE^)? pushleft_push | INTEGER | DOUBLE | TEXT | IF | THEN | ELSE | RETURN | TYPEOF | NSFUNCID | IT
+);
+
+assignleft_push:
+(
+	evalarg_push
+);
+
+assignright_push:
+(
+	pushleft_push
+);
+//////////////////////////////////////////////////////////////////
+/////////////////////////////////////
+//"this" N/A, "that"
+statement_pop: 
+(
+EVAL^ evalarg_pop |
+popleft_pop POP^ (popright_pop)+ |
+pushleft_pop PUSH^ (pushright_pop)+ |
+assignleft_pop ASSIGN^ assignright_pop |
+assignleft_pop COPY^ assignright_pop |
+newstack
+);
+
+evalarg_pop:
+(
+	IDENTIFIER
+);
+
+popleft_pop:
+(
+	evalarg_pop
+);
+
+popright_pop:
+(
+	(REF^)? IDENTIFIER | NULL | THAT
+);
+
+pushleft_pop:
+(
+	evalarg_pop
+);
+
+pushright_pop:
+(
+	(REF^ | SIZE^)? pushleft_pop | INTEGER | DOUBLE | TEXT | IF | THEN | ELSE | RETURN | TYPEOF | NSFUNCID
+);
+
+assignleft_pop:
+(
+	evalarg_pop
+);
+
+assignright_pop:
+(
+	pushleft_pop
+);
+//////////////////////////////////////////////////////////////////
 evalarg:
 (
 	IDENTIFIER | THIS 
@@ -217,6 +324,10 @@ assignright:
 	pushleft
 );
 
+newstack: 
+(
+	evalarg
+);
 
 
 {
@@ -487,7 +598,7 @@ program:
 	code.println("#include\"" + NotJustStacks.hFile + "\"");
 	code.println("#include\"njs.h\"");		
 } 
-#(PROGRAM include_list function_list)
+#(PROGRAM include_list definition_list)
 {
 	code.println("}");
 	if(isExe)
@@ -568,11 +679,14 @@ include_list:
 code.println("namespace " + libname + "{");
 };
 
-function_list:
-#(FUNCTION_LIST (funcdef)*);
+definition_list:
+#(DEFINITION_LIST (funcdef /*| ssdef*/)*);
 
 funcdef:
 #(FUNCTION_DEFINITION func);
+
+/*ssdef:
+#(SS_DEFINITION ss);*/
 
 
 func:
