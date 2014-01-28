@@ -121,7 +121,7 @@ function_list: (function_definition)*
 
 function_definition: (FUNC! x:IDENTIFIER^
 {	
-	NotJustStacksWalker.Symbol functionEntry = new NotJustStacksWalker.Symbol("sp", "sp", NotJustStacksWalker.libname, x.getText());
+	NotJustStacksWalker.Symbol functionEntry = new NotJustStacksWalker.Symbol("", "sp", "", NotJustStacksWalker.libname, x.getText());
 	if(NotJustStacksWalker.symbolTable.containsKey(functionEntry.toString()))
 	{
 		System.err.println("ERROR: Stack processor \""+ x.getText() + "\" has already been defined.");
@@ -241,14 +241,17 @@ options {
 	static class Symbol
 	{
 		public String scope;
-		public String type;
+		public String entryType;
+		public String varType;
 		public String namespace;
 		public String name;
 		
-		public Symbol(String scope, String type, String namespace, String name)
+		// Symbol Table key format: entryType@varType@scope@namespace::name
+		public Symbol(String scope, String entryType, String varType, String namespace, String name)
 		{
 			this.scope = scope;
-			this.type = type;
+			this.entryType = entryType;
+			this.varType = varType;
 			this.namespace = namespace;
 			this.name = name;
 		}
@@ -260,7 +263,7 @@ options {
 			{
 				ns += "::";
 			}
-			return scope+"@"+ns+name;
+			return entryType+"@"+varType+"@"+scope+"@"+ns+name;
 		}	
 	}
 	
@@ -285,10 +288,10 @@ options {
 			BufferedReader br = new BufferedReader(new FileReader(libHeaderName));
 			String line;
 			while ((line = br.readLine()) != null) {
-			   if(line.substring(0,2).equals("//"))
+			   if(line.startsWith("//"))
 			   {
-			   		String functionName = line.substring(2,line.length());			   		
-			   		Symbol functionEntry = new Symbol("sp", "sp", "", functionName);			   		
+			   		String functionName = line.substring(2,line.length());			   					   		
+			   		Symbol functionEntry = new Symbol("", "sp", "", "", functionName);			   		
 			   		if(symbolTable.containsKey(functionEntry.toString()))
 			   		{
 			   			System.err.println("ERROR: Stack processor \""+ functionName + "\" has already been defined.");
@@ -435,8 +438,7 @@ options {
 			{
 				code.println("\t_STACK("+dst+")->operator=(" +src+ ");");
 			}
-		}
-		
+		}		
 	}
 	
 	private void createVariableCode(String name)
@@ -455,11 +457,10 @@ program:
 		{
 			if(symbols[i].startsWith("sp@"))
 			{
-				headerCode.println("//"+ symbols[i].substring(3));	
+				headerCode.println("//"+ symbols[i].substring(5));	
 			}	
 		}
-	}
-	
+	}	
 	
 	headerCode.println("#ifndef " + libname + "_NJS_HEADER");
 	headerCode.println("#define " + libname + "_NJS_HEADER");
@@ -496,17 +497,16 @@ program:
 		code.println("cout << \"Press enter to continue...\" << endl; getchar();");
 		code.println("#endif _WIN32");
 		code.println("return 0;}");
-	}
-	
-		
+	}	
 	
 	NavigableSet<String> navSet = symbolTable.navigableKeySet();
-	String[] symbols = navSet.toArray(new String[0]);
+	String[] symbols = navSet.toArray(new String[0]);	
 	for(int i = 0; i < symbols.length; i++)
 	{		
-		if(symbols[i].startsWith("sp@"+libname+"::"))
+		String keyPrefix = "sp@@@"+libname+"::";		
+		if(symbols[i].startsWith(keyPrefix))
 		{			
-			String temp = symbols[i].replace("sp@"+libname+"::", "");
+			String temp = symbols[i].replace(keyPrefix, "");
 			headerCode.println(libname + "_NJS_API void njs_sp_"+ temp + "(Data&);");	
 		}	
 	}
@@ -588,8 +588,8 @@ func:
 
 newstack:
 x:IDENTIFIER
-{
-	Symbol s = new Symbol(scope, "Stack", libname, x.getText());
+{	
+	Symbol s = new Symbol(scope, "var", "Stack", libname, x.getText());
 	if(!symbolTable.containsKey(s.toString()))
 	{
 		symbolTable.put(s.toString(), s);
@@ -631,8 +631,8 @@ assign:
 #(ASSIGN (x1:IDENTIFIER | x2:THIS) (x3:IDENTIFIER | x4:THIS))
 {
 	if(x1 != null)
-	{	
-		Symbol s1 = new Symbol(scope, "Stack", libname, x1.getText());	
+	{			
+		Symbol s1 = new Symbol(scope, "var", "Stack", libname, x1.getText());	
 		if(!symbolTable.containsKey(s1.toString()))
 		{
 			symbolTable.put(s1.toString(), s1);
@@ -640,7 +640,7 @@ assign:
 		}		
 		if(x3 != null)
 		{
-			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
+			Symbol s3 = new Symbol(scope, "var", "Stack", libname, x3.getText());
 			if(symbolTable.containsKey(s3.toString()))
 			{
 				if(!x1.getText().equals(x3.getText()))
@@ -662,7 +662,7 @@ assign:
 	{		
 		if(x3 != null)
 		{
-			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
+			Symbol s3 = new Symbol(scope, "var", "Stack", libname, x3.getText());
 			if(symbolTable.containsKey(s3.toString()))
 			{								
 				shallowCopyCode("this_", getLocalStackName(x3));
@@ -681,7 +681,7 @@ deepcopy:
 	if(x1 != null)
 	{
 		boolean exists = true;	
-		Symbol s1 = new Symbol(scope, "Stack", libname, x1.getText());	
+		Symbol s1 = new Symbol(scope, "var", "Stack", libname, x1.getText());	
 		if(!symbolTable.containsKey(s1.toString()))
 		{
 			symbolTable.put(s1.toString(), s1);
@@ -690,7 +690,7 @@ deepcopy:
 		}		
 		if(x3 != null)
 		{
-			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
+			Symbol s3 = new Symbol(scope, "var", "Stack", libname, x3.getText());
 			if(symbolTable.containsKey(s3.toString()))
 			{								
 				if(!x1.getText().equals(x3.getText()))
@@ -720,7 +720,7 @@ deepcopy:
 	{		
 		if(x3 != null)
 		{
-			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
+			Symbol s3 = new Symbol(scope, "var", "Stack", libname, x3.getText());
 			if(symbolTable.containsKey(s3.toString()))
 			{								
 				deepCopyCode("this_", getLocalStackName(x3));
@@ -738,7 +738,7 @@ eval:
 {
 	if(x1 != null)
 	{
-		Symbol s1 = new Symbol(scope, "Stack", libname, x1.getText());
+		Symbol s1 = new Symbol(scope, "var", "Stack", libname, x1.getText());
 		if(symbolTable.containsKey(s1.toString()))
 		{
 			evalCode(getLocalStackName(x1));			
@@ -759,12 +759,12 @@ pop:
 {
 	if(x1 != null) //IDENTIFIER
 	{
-		Symbol s1 = new Symbol(scope, "Stack", libname, x1.getText());
+		Symbol s1 = new Symbol(scope, "var", "Stack", libname, x1.getText());
 		if(symbolTable.containsKey(s1.toString()))
 		{
 			if(x3 != null) // IDENTIFIER
 			{
-				Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
+				Symbol s3 = new Symbol(scope, "var", "Stack", libname, x3.getText());
 				if(!symbolTable.containsKey(s3.toString()))
 				{
 					symbolTable.put(s3.toString(), s3);
@@ -782,7 +782,7 @@ pop:
 			}
 			else
 			{
-				Symbol s60 = new Symbol(scope, "Stack", libname, x60.getText());
+				Symbol s60 = new Symbol(scope, "var", "Stack", libname, x60.getText());
 				if(!symbolTable.containsKey(s60.toString()))
 				{
 					symbolTable.put(s60.toString(), s60);
@@ -803,7 +803,7 @@ pop:
 	{
 		if(x3 != null) // IDENTIFIER
 		{
-			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
+			Symbol s3 = new Symbol(scope, "var", "Stack", libname, x3.getText());
 			if(!symbolTable.containsKey(s3.toString()))
 			{
 				symbolTable.put(s3.toString(), s3);
@@ -821,7 +821,7 @@ pop:
 		}
 		else
 		{
-			Symbol s60 = new Symbol(scope, "Stack", libname, x60.getText());
+			Symbol s60 = new Symbol(scope, "var", "Stack", libname, x60.getText());
 			if(!symbolTable.containsKey(s60.toString()))
 			{
 				symbolTable.put(s60.toString(), s60);
@@ -844,7 +844,7 @@ push:
 {
 	if(x1 != null) //IDENTIFIER
 	{
-		Symbol s1 = new Symbol(scope, "Stack", libname, x1.getText());
+		Symbol s1 = new Symbol(scope, "var", "Stack", libname, x1.getText());
 		if(!symbolTable.containsKey(s1.toString()))
 		{
 			symbolTable.put(s1.toString(), s1);			
@@ -852,8 +852,8 @@ push:
 		}
 		if(x3 != null) //IDENTIFIER
 		{
-			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
-			Symbol s3_2 = new Symbol("sp", "sp", libname, x3.getText());
+			Symbol s3 = new Symbol(scope, "var", "Stack", libname, x3.getText());
+			Symbol s3_2 = new Symbol("", "sp", "", libname, x3.getText());
 			if(symbolTable.containsKey(s3.toString()))
 			{					
 				pushCode(getLocalStackName(x1), getLocalStackName(x3));
@@ -875,7 +875,7 @@ push:
 		{
 			if(x50 != null)
 			{
-				Symbol s50 = new Symbol(scope, "Stack", libname, x50.getText());
+				Symbol s50 = new Symbol(scope, "var", "Stack", libname, x50.getText());
 				if(symbolTable.containsKey(s50.toString()))
 				{
 					code.println("\t{Data njs_temp_data(new Stack(*(Stack*)_STACK(" + getLocalStackName(x50) + ")), STACK); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
@@ -894,7 +894,7 @@ push:
 		{
 			if(x60 != null)
 			{
-				Symbol s60 = new Symbol(scope, "Stack", libname, x60.getText());
+				Symbol s60 = new Symbol(scope, "var", "Stack", libname, x60.getText());
 				if(symbolTable.containsKey(s60.toString()))
 				{
 					code.println("\t{Data njs_temp_data(new int, INTEGER); *(int*)njs_temp_data.data = (int)_STACK("+ getLocalStackName(x60) + ")->size(); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
@@ -947,7 +947,7 @@ push:
 			if(namespaceMap.containsKey(parts[0]))
 			{
 				String ns = namespaceMap.get(parts[0]);
-				Symbol s3 = new Symbol("sp", "sp", ns, parts[1]);
+				Symbol s3 = new Symbol("", "sp", "", ns, parts[1]);
 				if(symbolTable.containsKey(s3.toString())) //FUNCTION
 				{
 					code.println("\t{Data njs_temp_data(&" + ns +"::njs_sp_"+ parts[1] + ",SP); _STACK(" + getLocalStackName(x1) + ")->push(njs_temp_data);}");
@@ -967,8 +967,8 @@ push:
 	{
 		if(x3 != null) //IDENTIFIER
 		{
-			Symbol s3 = new Symbol(scope, "Stack", libname, x3.getText());
-			Symbol s3_2 = new Symbol("sp", "sp", libname, x3.getText());
+			Symbol s3 = new Symbol(scope, "var", "Stack", libname, x3.getText());
+			Symbol s3_2 = new Symbol("", "sp", "", libname, x3.getText());
 			if(symbolTable.containsKey(s3.toString()))
 			{	
 				pushCode("this_", getLocalStackName(x3));				
@@ -990,7 +990,7 @@ push:
 		{
 			if(x50 != null)
 			{
-				Symbol s50 = new Symbol(scope, "Stack", libname, x50.getText());			
+				Symbol s50 = new Symbol(scope, "var", "Stack", libname, x50.getText());			
 				if(symbolTable.containsKey(s50.toString()))
 				{
 					code.println("\t{Data njs_temp_data(new Stack(*(Stack*)_STACK("+getLocalStackName(x50)+")), STACK); _STACK(this_)->push(njs_temp_data);}");
@@ -1010,7 +1010,7 @@ push:
 		{
 			if(x60 != null)
 			{
-				Symbol s60 = new Symbol(scope, "Stack", libname, x60.getText());			
+				Symbol s60 = new Symbol(scope, "var", "Stack", libname, x60.getText());			
 				if(symbolTable.containsKey(s60.toString()))
 				{
 					code.println("\t{Data njs_temp_data(new int, INTEGER); *(int*)njs_temp_data.data = (int)_STACK("+ getLocalStackName(x60) + ")->size(); _STACK(this_)->push(njs_temp_data);}");
@@ -1063,7 +1063,7 @@ push:
 			if(namespaceMap.containsKey(parts[0]))
 			{
 				String ns = namespaceMap.get(parts[0]);
-				Symbol s3 = new Symbol("sp", "sp", ns, parts[1]);
+				Symbol s3 = new Symbol("", "sp", "", ns, parts[1]);
 				if(symbolTable.containsKey(s3.toString())) //FUNCTION
 				{
 					code.println("\t{Data njs_temp_data(&" + ns +"::njs_sp_"+ parts[1] + ",SP); _STACK(this_)->push(njs_temp_data);}");
