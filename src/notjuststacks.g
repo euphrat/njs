@@ -14,13 +14,12 @@ tokens {
 	ELSE = "else";			
 	INCLUDE = "include";
 	THIS = "this";
-	THAT = "that";
-	IT = "it";
 	NULL = "null";
 	RETURN = "return";
 	TYPEOF = "typeof";
 	SPECIALSTACK = "ss";
 	OPERATOR = "op";
+	INIT = "init";
 	PROGRAM;
 	DEFINITION_LIST;	
 	INCLUDE_LIST;	
@@ -68,6 +67,7 @@ DOLLAR: "$";
 COMMA: ",";
 COL: ":";
 DOT: ".";
+USE: "^";
 
 
 TEXT:
@@ -156,26 +156,30 @@ ss_definition: (SPECIALSTACK! x:IDENTIFIER^
 	#ss_definition = #([SS_DEFINITION,"SS_DEFINITION"],#ss_definition);	
 };
 
-member_variable_list: (newstack SEMI!)*
+member_variable_list: (newstack SEMI!)* //TODO burada member variablelari symbolTable'a ekleyecegiz ve daha sonra bunlari code generation da kullanacagiz!
 {
 	#member_variable_list = #([MEMBER_VAR_LIST,"MEMBER_VAR_LIST"],#member_variable_list);
 };
 
-member_func_list: ((push_func_definition)? (pop_func_definition)? (size_func_definition)?)
+member_func_list: ((init_func_definition)? (push_func_definition) (pop_func_definition) (size_func_definition))
 {
 	#member_func_list = #([MEMBER_FUNCTION_LIST,"MEMBER_FUNCTION_LIST"],#member_func_list);
 };
 
+init_func_definition: (
+INIT^ ((statement_ss SEMI!)* | (cppinclude)* CPPCODE)  END!
+);
+
 push_func_definition: (
-OPERATOR! PUSH^  ((statement_push SEMI!)* | (cppinclude)* CPPCODE)  END!
+OPERATOR! PUSH^  ((statement_ss SEMI!)* | (cppinclude)* CPPCODE)  END!
 );
 
 pop_func_definition: (
-OPERATOR! POP^  ((statement_pop SEMI!)* | (cppinclude)* CPPCODE)  END!
+OPERATOR! POP^  ((statement_ss SEMI!)* | (cppinclude)* CPPCODE)  END!
 );
 
 size_func_definition: (
-OPERATOR! SIZE^  ((statement SEMI!)* | (cppinclude)* CPPCODE)  END!
+OPERATOR! SIZE^  ((statement_ss SEMI!)* | (cppinclude)* CPPCODE)  END!
 );
 
 cppinclude:
@@ -195,100 +199,12 @@ assignleft ASSIGN^ assignright |
 assignleft COPY^ assignright |
 newstack
 );
-/////////////////////////////////////
-//"this" N/A, "it"
-statement_push: 
+
+statement_ss:
 (
-EVAL^ evalarg_push |
-popleft_push POP^ (popright_push)+ |
-pushleft_push PUSH^ (pushright_push)+ |
-assignleft_push ASSIGN^ assignright_push |
-assignleft_push COPY^ assignright_push |
-newstack
+	statement | USE^ evalarg
 );
 
-evalarg_push:
-(
-	IDENTIFIER
-);
-
-popleft_push:
-(
-	evalarg_push
-);
-
-popright_push:
-(
-	(REF^)? IDENTIFIER | NULL
-);
-
-pushleft_push:
-(
-	evalarg_push
-);
-
-pushright_push:
-(
-	(REF^ | SIZE^)? pushleft_push | INTEGER | DOUBLE | TEXT | IF | THEN | ELSE | RETURN | TYPEOF | NSFUNCID | IT
-);
-
-assignleft_push:
-(
-	evalarg_push
-);
-
-assignright_push:
-(
-	pushleft_push
-);
-//////////////////////////////////////////////////////////////////
-/////////////////////////////////////
-//"this" N/A, "that"
-statement_pop: 
-(
-EVAL^ evalarg_pop |
-popleft_pop POP^ (popright_pop)+ |
-pushleft_pop PUSH^ (pushright_pop)+ |
-assignleft_pop ASSIGN^ assignright_pop |
-assignleft_pop COPY^ assignright_pop |
-newstack
-);
-
-evalarg_pop:
-(
-	IDENTIFIER
-);
-
-popleft_pop:
-(
-	evalarg_pop
-);
-
-popright_pop:
-(
-	(REF^)? IDENTIFIER | NULL | THAT
-);
-
-pushleft_pop:
-(
-	evalarg_pop
-);
-
-pushright_pop:
-(
-	(REF^ | SIZE^)? pushleft_pop | INTEGER | DOUBLE | TEXT | IF | THEN | ELSE | RETURN | TYPEOF | NSFUNCID
-);
-
-assignleft_pop:
-(
-	evalarg_pop
-);
-
-assignright_pop:
-(
-	pushleft_pop
-);
-//////////////////////////////////////////////////////////////////
 evalarg:
 (
 	IDENTIFIER | THIS 
@@ -614,12 +530,27 @@ program:
 	String[] symbols = navSet.toArray(new String[0]);	
 	for(int i = 0; i < symbols.length; i++)
 	{		
-		String keyPrefix = "sp@@@"+libname+"::";		
-		if(symbols[i].startsWith(keyPrefix))
+		String spKeyPrefix = "sp@@@"+libname+"::";	
+		String ssKeyPrefix = "ss@@@"+libname+"::";	
+		if(symbols[i].startsWith(spKeyPrefix))
 		{			
-			String temp = symbols[i].replace(keyPrefix, "");
+			String temp = symbols[i].replace(spKeyPrefix, "");
 			headerCode.println(libname + "_NJS_API void njs_sp_"+ temp + "(Data&);");	
-		}	
+		}				
+		else if(symbols[i].startsWith(ssKeyPrefix))
+		{			
+			String temp = symbols[i].replace(ssKeyPrefix, "");
+			headerCode.println("class "+ libname + "_NJS_API njs_ss_"+ temp + " : public StackInterface{");
+			headerCode.println("public:");
+			headerCode.println("\tvirtual ~Stack();");
+			headerCode.println("\tvirtual void push(const Data& it);");
+			headerCode.println("\tvirtual void pop();");
+			headerCode.println("\tvirtual Data& top();");
+			headerCode.println("\tvirtual bool empty();");
+			headerCode.println("\tvirtual size_t size();");
+			headerCode.println("\tvirtual void operator=(const Data& that);");
+			headerCode.println("};");	
+		}
 	}
 	headerCode.println("}");
 	headerCode.println("using namespace std;");
@@ -680,20 +611,45 @@ code.println("namespace " + libname + "{");
 };
 
 definition_list:
-#(DEFINITION_LIST (funcdef /*| ssdef*/)*);
+#(DEFINITION_LIST (funcdef | ssdef)*);
+
+statement: (eval | pop | push | pop | newstack | clearthis | assign | deepcopy);
 
 funcdef:
 #(FUNCTION_DEFINITION func);
 
-/*ssdef:
-#(SS_DEFINITION ss);*/
+ssdef:
+#(SS_DEFINITION ss);
 
+ss:
+#(IDENTIFIER mvlist mflist);
+
+mvlist:
+#(MEMBER_VAR_LIST (newstack)*);
+
+mflist:
+#(MEMBER_FUNCTION_LIST (initdef)? (pushdef) (popdef) (sizedef));
+
+initdef:
+#(INIT ((statement)* use| cppcode));
+
+pushdef:
+#(PUSH ((statement)* use| cppcode));
+
+popdef:
+#(POP ((statement)* use | cppcode));
+
+sizedef:
+#(SIZE ((statement)* use | cppcode));
+
+use:
+#(USE (IDENTIFIER | THIS));
 
 func:
 #(IDENTIFIER {
 	code.println("void njs_sp_" + #IDENTIFIER + "(Data& this_){");	
 	scope = #IDENTIFIER.getText();	
-} ((eval | pop | push | pop | newstack | clearthis | assign | deepcopy)* | cppcode))
+} ((statement)* | cppcode))
 {
 	code.println("}");
 	scope = null;
