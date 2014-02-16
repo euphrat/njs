@@ -7,7 +7,7 @@ import java.io.PrintWriter;
 import antlr.RecognitionException;
 import antlr.TokenStreamException;
 import antlr.collections.AST;
-import antlr.debug.misc.ASTFrame;
+//import antlr.debug.misc.ASTFrame;
 
 
 public class NotJustStacks {
@@ -78,7 +78,7 @@ public class NotJustStacks {
 		NotJustStacksWalker.code.close();
 		NotJustStacksWalker.headerCode.close();
 		NotJustStacksWalker.linkInfo.close();
-		ASTFrame frame = new ASTFrame("Not Just Stacks", tree);
-		frame.setVisible(true);		
+		//ASTFrame frame = new ASTFrame("Not Just Stacks", tree);
+		//frame.setVisible(true);		
 	}
 }

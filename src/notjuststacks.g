@@ -105,6 +105,10 @@ options {
 	
 }
 
+{
+	private String scope = null;	
+}
+
 program: (include_list)(definition_list)
 {
 	#program = #([PROGRAM,"PROGRAM"],#program);
@@ -141,7 +145,8 @@ function_definition: (FUNC! x:IDENTIFIER^
 
 ss_definition: (SPECIALSTACK! x:IDENTIFIER^
 {	
-	NotJustStacksWalker.Symbol ssEntry = new NotJustStacksWalker.Symbol("", "ss", "", NotJustStacksWalker.libname, x.getText());
+	scope = x.getText();
+	NotJustStacksWalker.Symbol ssEntry = new NotJustStacksWalker.Symbol("", "ss", "", NotJustStacksWalker.libname, scope);
 	if(NotJustStacksWalker.symbolTable.containsKey(ssEntry.toString()))
 	{
 		System.err.println("ERROR: Specialized stack type \""+ x.getText() + "\" has already been defined.");
@@ -153,10 +158,33 @@ ss_definition: (SPECIALSTACK! x:IDENTIFIER^
 } 
 (member_variable_list)(member_func_list)  END!)
 {
-	#ss_definition = #([SS_DEFINITION,"SS_DEFINITION"],#ss_definition);	
+	#ss_definition = #([SS_DEFINITION,"SS_DEFINITION"],#ss_definition);
+	scope = null;	
 };
 
-member_variable_list: (newstack SEMI!)* //TODO burada member variablelari symbolTable'a ekleyecegiz ve daha sonra bunlari code generation da kullanacagiz!
+member_variable_list: ((tname:IDENTIFIER)? x:IDENTIFIER 
+{
+	//Symbol(String scope, String entryType, String varType, String namespace, String name)
+	String typeName = "Stack";
+	if(tname != null)
+	{
+		//TODO: Check if the type is defined!
+		typeName = tname.getText();
+	}	
+	//TODO: fix the case: two variables with the same name but different type
+	NotJustStacksWalker.Symbol mvEntry = new NotJustStacksWalker.Symbol(scope, "mv", typeName, NotJustStacksWalker.libname, x.getText());
+	if(NotJustStacksWalker.symbolTable.containsKey(mvEntry.toString()))
+	{
+		System.err.println("ERROR: Member variable \""+ x.getText() + "\" has already been defined.");
+	}
+	else
+	{
+		mvEntry.parentKey = (new NotJustStacksWalker.Symbol("", "ss", "", NotJustStacksWalker.libname, scope)).toString();
+		NotJustStacksWalker.symbolTable.get(mvEntry.parentKey).childKeys.add(mvEntry.toString());
+		NotJustStacksWalker.symbolTable.put(mvEntry.toString(), mvEntry);		
+	}
+}
+SEMI!)* 
 {
 	#member_variable_list = #([MEMBER_VAR_LIST,"MEMBER_VAR_LIST"],#member_variable_list);
 };
@@ -167,7 +195,7 @@ member_func_list: ((init_func_definition)? (push_func_definition) (pop_func_defi
 };
 
 init_func_definition: (
-INIT^ ((statement_ss SEMI!)* | (cppinclude)* CPPCODE)  END!
+INIT^ ((statement SEMI!)* | (cppinclude)* CPPCODE)  END!
 );
 
 push_func_definition: (
@@ -254,6 +282,7 @@ import java.io.BufferedReader;
 import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.NavigableSet;
+import java.util.ArrayList;
 }
 
 class NotJustStacksWalker extends TreeParser;
@@ -273,7 +302,10 @@ options {
 		public String namespace;
 		public String name;
 		
-		// Symbol Table key format: entryType@varType@scope@namespace::name
+		public String parentKey = null;
+		public ArrayList<String> childKeys = new ArrayList<String>();
+		
+		// Symbol Table key format: entryType@@scope@namespace::name
 		public Symbol(String scope, String entryType, String varType, String namespace, String name)
 		{
 			this.scope = scope;
@@ -290,7 +322,7 @@ options {
 			{
 				ns += "::";
 			}
-			return entryType+"@"+varType+"@"+scope+"@"+ns+name;
+			return entryType+"@@"+scope+"@"+ns+name;
 		}	
 	}
 	
@@ -363,18 +395,18 @@ options {
 			}
 			else
 			{
-				code.println("\tif(!_STACK("+src+")->empty()){Data njs_temp_data = _STACK("+ src +")->top(); _STACK("+ src +")->pop(); _STACK(this_)->push(njs_temp_data);}");
+				code.println("\tif(!_STACK("+src+")->empty()){_STACK("+ src +")->pop(this_);}");
 			}
 		}
 		else
 		{
 			if(src.equals("this_"))
 			{
-				code.println("\tif(!_STACK(this_)->empty()){Data njs_temp_data = _STACK(this_)->top(); _STACK(this_)->pop(); _STACK(" + dst + ")->push(njs_temp_data);}");
+				code.println("\tif(!_STACK(this_)->empty()){_STACK(this_)->pop(" + dst + ");}");
 			}
 			else
 			{
-				code.println("\tif(!_STACK("+src+")->empty()){Data njs_temp_data = _STACK("+ src +")->top(); _STACK("+ src +")->pop(); _STACK(" + dst + ")->push(njs_temp_data);}");
+				code.println("\tif(!_STACK("+src+")->empty()){_STACK("+ src +")->pop(" + dst + ");}");
 			}
 		}	
 	}
@@ -491,9 +523,7 @@ program:
 	
 	headerCode.println("#ifndef " + libname + "_NJS_HEADER");
 	headerCode.println("#define " + libname + "_NJS_HEADER");
-	headerCode.println("#include<stack>");
 	headerCode.println("#include\"njs.h\"");	
-	headerCode.println("namespace " + libname + "{");
 	if(isExe)
 	{
 		headerCode.println("#define " + libname + "_NJS_API");
@@ -510,7 +540,6 @@ program:
 		headerCode.println("\t#define " + libname + "_NJS_API");
 		headerCode.println("#endif");
 	}	
-	
 	code.println("#include\"" + NotJustStacks.hFile + "\"");
 	code.println("#include\"njs.h\"");		
 } 
@@ -542,13 +571,19 @@ program:
 			String temp = symbols[i].replace(ssKeyPrefix, "");
 			headerCode.println("class "+ libname + "_NJS_API njs_ss_"+ temp + " : public StackInterface{");
 			headerCode.println("public:");
-			headerCode.println("\tvirtual ~Stack();");
+			headerCode.println("\tvirtual ~njs_ss_" + temp + "();");
 			headerCode.println("\tvirtual void push(const Data& it);");
 			headerCode.println("\tvirtual void pop();");
-			headerCode.println("\tvirtual Data& top();");
-			headerCode.println("\tvirtual bool empty();");
+			headerCode.println("\tvirtual Data& top();");			
 			headerCode.println("\tvirtual size_t size();");
 			headerCode.println("\tvirtual void operator=(const Data& that);");
+			headerCode.println("protected:");
+			ArrayList<String> al = symbolTable.get(symbols[i]).childKeys;
+			for(int j = 0; j < al.size(); j++)
+			{
+				Symbol s = symbolTable.get(al.get(j));
+				headerCode.println("\t"+s.varType+" "+s.name+";");
+			}			
 			headerCode.println("};");	
 		}
 	}
@@ -594,19 +629,21 @@ include_list:
 		namespaceMap.put(temp2, libraryName.toUpperCase());
 	}
 	String headerFullPath = libraryDir + "/" + headerFileName;		
+	
 	if(new File(headerFullPath).exists())
 	{
-		code.println("#include \""+ headerFileName + "\"");
+		headerCode.println("#include \""+ headerFileName + "\"");
 		linkInfo.print(" -L" + libraryDir +" -l" + libraryName + " -I" + libraryDir);
 		updateSymbolTable(headerFullPath);
 	}
 	else
 	{
 		System.err.println("ERROR: Library "+ libraryName + " cannot be found.");
-	}	
+	}		
 }
 )*)
 {
+headerCode.println("namespace " + libname + "{");
 code.println("namespace " + libname + "{");
 };
 
@@ -619,10 +656,23 @@ funcdef:
 #(FUNCTION_DEFINITION func);
 
 ssdef:
-#(SS_DEFINITION ss);
+#(SS_DEFINITION ss)
+{
+	scope = null;	
+}
+;
 
 ss:
-#(IDENTIFIER mvlist mflist);
+#(IDENTIFIER 
+{
+	scope = #IDENTIFIER.getText();
+	code.println("njs_ss_" + scope + "::~njs_ss_" + scope + "(){};");
+	code.println("void "+ scope +"::operator=(const Data& that)");
+	code.println("{");
+	code.println("	*this = *(" + scope +"*)_STACK(that);");
+	code.println("}");		
+}
+mvlist mflist);
 
 mvlist:
 #(MEMBER_VAR_LIST (newstack)*);
@@ -631,7 +681,7 @@ mflist:
 #(MEMBER_FUNCTION_LIST (initdef)? (pushdef) (popdef) (sizedef));
 
 initdef:
-#(INIT ((statement)* use| cppcode));
+#(INIT ((statement)* | cppcode));
 
 pushdef:
 #(PUSH ((statement)* use| cppcode));
@@ -659,15 +709,19 @@ func:
 newstack:
 x:IDENTIFIER
 {	
-	Symbol s = new Symbol(scope, "var", "Stack", libname, x.getText());
-	if(!symbolTable.containsKey(s.toString()))
+	Symbol varS = new Symbol(scope, "mv", "", libname, x.getText());
+	if(!symbolTable.containsKey(varS.toString()))
 	{
-		symbolTable.put(s.toString(), s);
-		createVariableCode(getLocalStackName(x));		
-	}
-	else
-	{
-		clearStackCode(getLocalStackName(x));		
+		Symbol s = new Symbol(scope, "var", "Stack", libname, x.getText());
+		if(!symbolTable.containsKey(s.toString()))
+		{
+			symbolTable.put(s.toString(), s);
+			createVariableCode(getLocalStackName(x));		
+		}
+		else
+		{
+			clearStackCode(getLocalStackName(x));		
+		}
 	}
 };
 

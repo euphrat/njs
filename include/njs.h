@@ -43,9 +43,10 @@ class NJS_MAIN_LIB_NJS_API StackInterface
 public:
 	virtual ~StackInterface();
 	virtual void push(const Data& it) = 0;
+	virtual void pop(const Data& that);
 	virtual void pop() = 0;
 	virtual Data& top() = 0;
-	virtual bool empty() = 0;
+	virtual bool empty();
 	virtual size_t size() = 0;
 	virtual void operator=(const Data& that) = 0;
 };
@@ -57,10 +58,9 @@ public:
 	virtual void push(const Data& it);
 	virtual void pop();
 	virtual Data& top();
-	virtual bool empty();
 	virtual size_t size();
 	virtual void operator=(const Data& that);
-private:
+protected:
 	stack<Data> stack_;
 };
 

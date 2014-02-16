@@ -48,28 +48,39 @@ Data::~Data()
 
 StackInterface::~StackInterface(){}
 
+void StackInterface::pop(const Data& that)
+{
+	_STACK(that)->push(top());
+	pop();
+}
+
+bool StackInterface::empty()
+{
+	return size() == 0;
+}
+
 Stack::~Stack(){}
 
 void Stack::push(const Data& it)
 {
 	stack_.push(it);
 }
+
 void Stack::pop()
 {
 	stack_.pop();
 }
+
 Data& Stack::top()
 {
 	return stack_.top();
 }
-bool Stack::empty()
-{
-	return stack_.empty();
-}
+
 size_t Stack::size()
 {
 	return stack_.size();
 }
+
 void Stack::operator=(const Data& that)
 {
 	*this = *(Stack*)_STACK(that);
@@ -87,15 +98,13 @@ void njs_private_func_if_helper(Data& this_, int njs_temp_bool)
 		}
 		Data this__temp(new Stack, STACK);
 		while (!_STACK(this_)->empty() && _STACK(this_)->top().type != ELSE){
-			_STACK(this__temp)->push(_STACK(this_)->top());
-			_STACK(this_)->pop();
+			_STACK(this_)->pop(this__temp);
 		}
 		while (!_STACK(this_)->empty()){
 			_STACK(this_)->pop();
 		}
 		while (!_STACK(this__temp)->empty()){
-			_STACK(this_)->push(_STACK(this__temp)->top());
-			_STACK(this__temp)->pop();
+			_STACK(this__temp)->pop(this_);
 		}
 	}
 	else{
@@ -110,14 +119,14 @@ void njs_private_func_if(Data& this_){
 	if (!_STACK(this_)->empty()){
 		Data njs_temp_data = _STACK(this_)->top();
 		if (njs_temp_data.type == INTEGER){
-			njs_private_func_if_helper(this_, *(int*)njs_temp_data.data);
+			njs_private_func_if_helper(this_, _INT(njs_temp_data));
 		}
 		else 
 		{
 			njs_private_func_eval(this_);
 			Data njs_temp_data = _STACK(this_)->top();
 			if (njs_temp_data.type == INTEGER){
-				njs_private_func_if_helper(this_, *(int*)njs_temp_data.data);
+				njs_private_func_if_helper(this_, _INT(njs_temp_data));
 			}
 		}
 	}
@@ -154,10 +163,8 @@ void njs_private_func_deepCopy(Data& stack1, Data& stack2){
 		_STACK(tempStack)->push(copyData); _STACK(srcStack)->push(njs_temp_data);
 	}
 	while (!_STACK(tempStack)->empty()){
-		_STACK(stack2)->push(_STACK(tempStack)->top());
-		_STACK(tempStack)->pop();
-		_STACK(stack1)->push(_STACK(srcStack)->top());
-		_STACK(srcStack)->pop();
+		_STACK(tempStack)->pop(stack2);
+		_STACK(srcStack)->pop(stack1);
 	}
 }
 bool njs_private_func_eval(Data& s){
